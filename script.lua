@@ -1,3 +1,4 @@
+local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 
 for _, v in ReplicatedStorage:GetDescendants() do
@@ -12,3 +13,5 @@ for _, v in ReplicatedStorage:GetDescendants() do
 		-- print(v, "RMEV")
 	end
 end
+
+print("Equipping", Players.LocalPlayer.PlayerStats.DualWeapon.Value)
