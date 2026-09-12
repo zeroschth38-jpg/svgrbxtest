@@ -5,9 +5,9 @@ for _, v in ReplicatedStorage:GetDescendants() do
 	if v:IsA("RemoteFunction") then
 		-- print(v, "RMFN")
 		if v.Name == "RemoveItem" then
-			v:InvokeServer("Master Rex", -50)
+			v:InvokeServer("Gregs Will", 0-(-50))
 		elseif v.Name == "UpdateDualWeapon" then
-			v:InvokeServer("Master Rex")
+			v:InvokeServer("Deep Red Divinity")
 		end
 	elseif v:IsA("RemoteEvent") then
 		-- print(v, "RMEV")
