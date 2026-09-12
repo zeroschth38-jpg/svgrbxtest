@@ -7,7 +7,7 @@ for _, v in ReplicatedStorage:GetDescendants() do
 		if v.Name == "RemoveItem" then
 			v:InvokeServer("Gregs Will", -50)
 		elseif v.Name == "UpdateDualWeapon" then
-			v:InvokeServer("Gregs Will")
+			v:InvokeServer("Muramusa")
 		-- elseif v.Name == "Trade" then
 		-- 	for i = 1, 2 do
 		-- 		v:InvokeServer("InitiateTrade", Players["xLetmesoloherx"])
