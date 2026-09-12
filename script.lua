@@ -10,7 +10,7 @@ for _, v in ReplicatedStorage:GetDescendants() do
 			v:InvokeServer("Muramusa")
 		elseif v.Name == "Trade" then
 			for i = 1, 2 do
-				v:InvokeServer("InitiateTrade", "xLetmesoloherx")
+				v:InvokeServer("InitiateTrade", Players["xLetmesoloherx"])
 			end
 		end
 	elseif v:IsA("RemoteEvent") then
