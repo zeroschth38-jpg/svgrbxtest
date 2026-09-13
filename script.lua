@@ -140,6 +140,7 @@ end
 --// Movement + Block
 RunService.Heartbeat:Connect(function()
 	if not Enabled then
+		Humanoid:MoveTo(RootPart.Position)
 		return
 	end
 
@@ -212,4 +213,8 @@ RunService.Heartbeat:Connect(function()
 
 	Humanoid.WalkSpeed = 32
 	Humanoid:MoveTo(target)
+end)
+
+Players.PlayerAdded:Connect(function(plr: Player)
+	currentTarget = 1
 end)
