@@ -215,6 +215,6 @@ RunService.Heartbeat:Connect(function()
 	Humanoid:MoveTo(target)
 end)
 
-Players.PlayerAdded:Connect(function(plr: Player)
+Player.CharacterAdded:Connect(function(Character)
 	currentTarget = 1
 end)
