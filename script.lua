@@ -200,6 +200,12 @@ local function GetItem(String, ItemName)
 end
 
 local function updateEventCurrent()
+	local PlayerStats = Player:FindFirstChild("PlayerStats")
+	if not PlayerStats then
+		EventCurrent = 0
+		EventCurrentLabel.Text = "Event Current   0"
+		return
+	end
 	local Inventory = Player:FindFirstChild("Inventory")
 
 	if not Inventory then
