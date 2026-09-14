@@ -238,7 +238,7 @@ local function GetItem(String, ItemName)
 	return ItemName, 0
 end
 
-local function updateEventCurrent()
+local function updateEventCurrency()
 	local PlayerStats = Player:FindFirstChild("PlayerStats")
 	if not PlayerStats then
 		EventCurrency = 0
@@ -393,7 +393,7 @@ RunService.Heartbeat:Connect(function()
 	end
 
 	updateServerAge()
-	updateEventCurrent()
+	updateEventCurrency()
 
 	if not Enabled then
 		Humanoid:MoveTo(RootPart.Position)
