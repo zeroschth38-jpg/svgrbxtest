@@ -67,14 +67,14 @@ end)
 
 --// UI
 local ScreenGui = Instance.new("ScreenGui")
-ScreenGui.Name = "AutoWalkUI"
+ScreenGui.Name = "AutoFarmUI"
 ScreenGui.ResetOnSpawn = false
 ScreenGui.IgnoreGuiInset = true
-ScreenGui.Parent = Player:WaitForChild("PlayerGui")
+ScreenGui.Parent = PlayerGui
 
 local Panel = Instance.new("Frame")
 Panel.Name = "Panel"
-Panel.Size = UDim2.new(0.25, 0, 0.33, 0)
+Panel.Size = UDim2.new(0.25, 0, 0.40, 0)
 Panel.Position = UDim2.new(0.73, 0, 0.32, 0)
 Panel.BackgroundColor3 = Color3.fromRGB(22, 22, 26)
 Panel.BorderSizePixel = 0
@@ -91,18 +91,26 @@ PanelStroke.Transparency = 0.2
 PanelStroke.Parent = Panel
 
 local Padding = Instance.new("UIPadding")
-Padding.PaddingTop = UDim.new(0.07, 0)
+Padding.PaddingTop    = UDim.new(0.07, 0)
 Padding.PaddingBottom = UDim.new(0.07, 0)
-Padding.PaddingLeft = UDim.new(0.07, 0)
-Padding.PaddingRight = UDim.new(0.07, 0)
+Padding.PaddingLeft   = UDim.new(0.07, 0)
+Padding.PaddingRight  = UDim.new(0.07, 0)
 Padding.Parent = Panel
+
+local Layout = Instance.new("UIListLayout")
+Layout.SortOrder = Enum.SortOrder.LayoutOrder
+Layout.Padding = UDim.new(0, 0)
+Layout.HorizontalAlignment = Enum.HorizontalAlignment.Center
+Layout.VerticalAlignment = Enum.VerticalAlignment.Center
+Layout.Parent = Panel
 
 --// Title
 local Title = Instance.new("TextLabel")
 Title.Name = "Title"
+Title.LayoutOrder = 1
 Title.Size = UDim2.new(1, 0, 0.16, 0)
 Title.BackgroundTransparency = 1
-Title.Text = "AUTO WALK (F8)"
+Title.Text = "AUTO FARMING (F8)"
 Title.TextColor3 = Color3.fromRGB(255, 255, 255)
 Title.TextSize = 18
 Title.Font = Enum.Font.GothamBold
@@ -112,8 +120,8 @@ Title.Parent = Panel
 --// Status
 local Status = Instance.new("TextLabel")
 Status.Name = "Status"
+Status.LayoutOrder = 2
 Status.Size = UDim2.new(1, 0, 0.11, 0)
-Status.Position = UDim2.new(0, 0, 0.17, 0)
 Status.BackgroundTransparency = 1
 Status.TextColor3 = Color3.fromRGB(150, 150, 158)
 Status.TextSize = 12
@@ -124,8 +132,8 @@ Status.Parent = Panel
 --// Toggle
 local Toggle = Instance.new("TextButton")
 Toggle.Name = "Toggle"
+Toggle.LayoutOrder = 3
 Toggle.Size = UDim2.new(1, 0, 0.19, 0)
-Toggle.Position = UDim2.new(0, 0, 0.30, 0)
 Toggle.BorderSizePixel = 0
 Toggle.TextColor3 = Color3.fromRGB(255, 255, 255)
 Toggle.TextSize = 13
@@ -137,24 +145,11 @@ local ToggleCorner = Instance.new("UICorner")
 ToggleCorner.CornerRadius = UDim.new(0.2, 0)
 ToggleCorner.Parent = Toggle
 
---// Position
-local PositionLabel = Instance.new("TextLabel")
-PositionLabel.Name = "Position"
-PositionLabel.Size = UDim2.new(1, 0, 0.11, 0)
-PositionLabel.Position = UDim2.new(0, 0, 0.52, 0)
-PositionLabel.BackgroundTransparency = 1
-PositionLabel.TextColor3 = Color3.fromRGB(205, 205, 210)
-PositionLabel.TextSize = 12
-PositionLabel.Font = Enum.Font.GothamMedium
-PositionLabel.TextXAlignment = Enum.TextXAlignment.Left
-PositionLabel.TextTruncate = Enum.TextTruncate.AtEnd
-PositionLabel.Parent = Panel
-
 --// Place ID
 local PlaceIDLabel = Instance.new("TextLabel")
 PlaceIDLabel.Name = "PlaceId"
+PlaceIDLabel.LayoutOrder = 4
 PlaceIDLabel.Size = UDim2.new(1, 0, 0.11, 0)
-PlaceIDLabel.Position = UDim2.new(0, 0, 0.64, 0)
 PlaceIDLabel.BackgroundTransparency = 1
 PlaceIDLabel.TextColor3 = Color3.fromRGB(205, 205, 210)
 PlaceIDLabel.TextSize = 12
@@ -163,11 +158,38 @@ PlaceIDLabel.TextXAlignment = Enum.TextXAlignment.Left
 PlaceIDLabel.TextTruncate = Enum.TextTruncate.AtEnd
 PlaceIDLabel.Parent = Panel
 
+--// Total Block
+local TotalBlockLabel = Instance.new("TextLabel")
+TotalBlockLabel.Name = "TotalBlock"
+TotalBlockLabel.LayoutOrder = 5
+TotalBlockLabel.Size = UDim2.new(1, 0, 0.11, 0)
+TotalBlockLabel.BackgroundTransparency = 1
+TotalBlockLabel.Text = "Total Block   0"
+TotalBlockLabel.TextColor3 = Color3.fromRGB(205, 205, 210)
+TotalBlockLabel.TextSize = 12
+TotalBlockLabel.Font = Enum.Font.GothamMedium
+TotalBlockLabel.TextXAlignment = Enum.TextXAlignment.Left
+TotalBlockLabel.TextTruncate = Enum.TextTruncate.AtEnd
+TotalBlockLabel.Parent = Panel
+
+--// Position
+local PositionLabel = Instance.new("TextLabel")
+PositionLabel.Name = "Position"
+PositionLabel.LayoutOrder = 6
+PositionLabel.Size = UDim2.new(1, 0, 0.11, 0)
+PositionLabel.BackgroundTransparency = 1
+PositionLabel.TextColor3 = Color3.fromRGB(205, 205, 210)
+PositionLabel.TextSize = 12
+PositionLabel.Font = Enum.Font.GothamMedium
+PositionLabel.TextXAlignment = Enum.TextXAlignment.Left
+PositionLabel.TextTruncate = Enum.TextTruncate.AtEnd
+PositionLabel.Parent = Panel
+
 --// Event Currency
 local EventCurrencyLabel = Instance.new("TextLabel")
 EventCurrencyLabel.Name = "EventCurrency"
+EventCurrencyLabel.LayoutOrder = 7
 EventCurrencyLabel.Size = UDim2.new(1, 0, 0.11, 0)
-EventCurrencyLabel.Position = UDim2.new(0, 0, 0.76, 0)
 EventCurrencyLabel.BackgroundTransparency = 1
 EventCurrencyLabel.Text = "Event Currency   0"
 EventCurrencyLabel.TextColor3 = Color3.fromRGB(205, 205, 210)
@@ -180,8 +202,8 @@ EventCurrencyLabel.Parent = Panel
 --// Server Age
 local ServerAgeLabel = Instance.new("TextLabel")
 ServerAgeLabel.Name = "ServerAge"
+ServerAgeLabel.LayoutOrder = 8
 ServerAgeLabel.Size = UDim2.new(1, 0, 0.11, 0)
-ServerAgeLabel.Position = UDim2.new(0, 0, 0.88, 0)
 ServerAgeLabel.BackgroundTransparency = 1
 ServerAgeLabel.Text = "Server Age   00:00:00"
 ServerAgeLabel.TextColor3 = Color3.fromRGB(205, 205, 210)
@@ -194,13 +216,13 @@ ServerAgeLabel.Parent = Panel
 --// UI Update
 local function updateButton()
 	if Enabled then
-		Toggle.Text = "●  AUTO WALK  •  ENABLED"
+		Toggle.Text = "●  AUTO FARMING  •  ENABLED"
 		Toggle.BackgroundColor3 = Color3.fromRGB(42, 95, 68)
-		Status.Text = "Movement system is active"
+		Status.Text = "Farming system is active"
 	else
-		Toggle.Text = "●  AUTO WALK  •  DISABLED"
+		Toggle.Text = "●  AUTO FARMING  •  DISABLED"
 		Toggle.BackgroundColor3 = Color3.fromRGB(75, 43, 43)
-		Status.Text = "Movement system is paused"
+		Status.Text = "Farming system is paused"
 	end
 end
 
@@ -259,6 +281,21 @@ local function updateServerAge()
 		Seconds
 	)
 end
+
+task.spawn(function()
+	for _ = 1, 10 do
+		local success, blockedUserIds = pcall(function()
+			return StarterGui:GetCore("GetBlockedUserIds")
+		end)
+
+		if success and blockedUserIds then
+			TotalBlockLabel.Text = "Total Block   " .. #blockedUserIds
+			return
+		end
+
+		task.wait(0.5)
+	end
+end)
 
 local function updatePosition()
 	if RootPart then
