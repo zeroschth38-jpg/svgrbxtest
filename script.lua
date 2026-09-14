@@ -35,11 +35,6 @@ local TargetCurrency  = "Golden Shell"
 local LastInventory   = nil
 local EventCurrent    = 0
 
-local IntroPlaceID = 4733278992
-local Floors = {
-	Eight = 4737916764
-}
-
 local BlockCache = {}
 
 --// Character
@@ -319,15 +314,6 @@ RunService.Heartbeat:Connect(function()
 	end
 
 	if Humanoid.Health <= 0 then
-		return
-	end
-
-	if game.PlaceId == IntroPlaceID then
-		return
-	end
-	
-	if game.PlaceId ~= Floors.Eight then
-		TeleportToPlace(Floors.Eight)
 		return
 	end
 
