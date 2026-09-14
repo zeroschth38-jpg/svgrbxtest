@@ -35,7 +35,7 @@ local TargetCurrency = "Golden Shell"
 
 local IntroPlaceID = 4733278992
 local Floors = {
-	"Eight" = 4737916764
+	Eight = 4737916764
 }
 
 local BlockCache = {}
