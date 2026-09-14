@@ -36,6 +36,7 @@ local LastInventory   = nil
 local EventCurrency    = 0
 
 local TargetPlaceID = 4737916764
+local MAX_SERVER_AGE = 8 * 60 * 60
 
 local BlockCache = {}
 
@@ -73,7 +74,7 @@ ScreenGui.Parent = Player:WaitForChild("PlayerGui")
 
 local Panel = Instance.new("Frame")
 Panel.Name = "Panel"
-Panel.Size = UDim2.new(0.25, 0, 0.29, 0)
+Panel.Size = UDim2.new(0.25, 0, 0.33, 0)
 Panel.Position = UDim2.new(0.73, 0, 0.32, 0)
 Panel.BackgroundColor3 = Color3.fromRGB(22, 22, 26)
 Panel.BorderSizePixel = 0
@@ -139,8 +140,8 @@ ToggleCorner.Parent = Toggle
 --// Position
 local PositionLabel = Instance.new("TextLabel")
 PositionLabel.Name = "Position"
-PositionLabel.Size = UDim2.new(1, 0, 0.14, 0)
-PositionLabel.Position = UDim2.new(0, 0, 0.53, 0)
+PositionLabel.Size = UDim2.new(1, 0, 0.11, 0)
+PositionLabel.Position = UDim2.new(0, 0, 0.52, 0)
 PositionLabel.BackgroundTransparency = 1
 PositionLabel.TextColor3 = Color3.fromRGB(205, 205, 210)
 PositionLabel.TextSize = 12
@@ -152,8 +153,8 @@ PositionLabel.Parent = Panel
 --// Place ID
 local PlaceIDLabel = Instance.new("TextLabel")
 PlaceIDLabel.Name = "PlaceId"
-PlaceIDLabel.Size = UDim2.new(1, 0, 0.14, 0)
-PlaceIDLabel.Position = UDim2.new(0, 0, 0.69, 0)
+PlaceIDLabel.Size = UDim2.new(1, 0, 0.11, 0)
+PlaceIDLabel.Position = UDim2.new(0, 0, 0.64, 0)
 PlaceIDLabel.BackgroundTransparency = 1
 PlaceIDLabel.TextColor3 = Color3.fromRGB(205, 205, 210)
 PlaceIDLabel.TextSize = 12
@@ -165,8 +166,8 @@ PlaceIDLabel.Parent = Panel
 --// Event Currency
 local EventCurrencyLabel = Instance.new("TextLabel")
 EventCurrencyLabel.Name = "EventCurrency"
-EventCurrencyLabel.Size = UDim2.new(1, 0, 0.12, 0)
-EventCurrencyLabel.Position = UDim2.new(0, 0, 0.84, 0)
+EventCurrencyLabel.Size = UDim2.new(1, 0, 0.11, 0)
+EventCurrencyLabel.Position = UDim2.new(0, 0, 0.76, 0)
 EventCurrencyLabel.BackgroundTransparency = 1
 EventCurrencyLabel.Text = "Event Currency   0"
 EventCurrencyLabel.TextColor3 = Color3.fromRGB(205, 205, 210)
@@ -175,6 +176,20 @@ EventCurrencyLabel.Font = Enum.Font.GothamMedium
 EventCurrencyLabel.TextXAlignment = Enum.TextXAlignment.Left
 EventCurrencyLabel.TextTruncate = Enum.TextTruncate.AtEnd
 EventCurrencyLabel.Parent = Panel
+
+--// Server Age
+local ServerAgeLabel = Instance.new("TextLabel")
+ServerAgeLabel.Name = "ServerAge"
+ServerAgeLabel.Size = UDim2.new(1, 0, 0.11, 0)
+ServerAgeLabel.Position = UDim2.new(0, 0, 0.88, 0)
+ServerAgeLabel.BackgroundTransparency = 1
+ServerAgeLabel.Text = "Server Age   00:00:00"
+ServerAgeLabel.TextColor3 = Color3.fromRGB(205, 205, 210)
+ServerAgeLabel.TextSize = 12
+ServerAgeLabel.Font = Enum.Font.GothamMedium
+ServerAgeLabel.TextXAlignment = Enum.TextXAlignment.Left
+ServerAgeLabel.TextTruncate = Enum.TextTruncate.AtEnd
+ServerAgeLabel.Parent = Panel
 
 --// UI Update
 local function updateButton()
@@ -228,6 +243,21 @@ local function updateEventCurrent()
 
 	EventCurrency = Amount
 	EventCurrencyLabel.Text = "Event Currency   " .. EventCurrency
+end
+
+local function updateServerAge()
+	local ServerAge = math.floor(workspace.DistributedGameTime)
+
+	local Hours   = math.floor(ServerAge / 3600)
+	local Minutes = math.floor((ServerAge % 3600) / 60)
+	local Seconds = ServerAge % 60
+
+	ServerAgeLabel.Text = string.format(
+		"Server Age   %02d:%02d:%02d",
+		Hours,
+		Minutes,
+		Seconds
+	)
 end
 
 local function updatePosition()
@@ -325,6 +355,7 @@ RunService.Heartbeat:Connect(function()
 		return
 	end
 
+	updateServerAge()
 	updateEventCurrent()
 
 	if not Enabled then
@@ -349,13 +380,11 @@ RunService.Heartbeat:Connect(function()
 		end
 	end
 
-	--// อย่างน้อย 1 คนถูก Block → Teleport
 	if HasBlockedPlayer then
 		TeleportToPlace()
 		return
 	end
 
-	--// มีผู้เล่นอื่น แต่ยังไม่มีใครถูก Block
 	if HasOtherPlayer then
 		for _, plr in Players:GetPlayers() do
 			if plr == Player then
@@ -367,6 +396,11 @@ RunService.Heartbeat:Connect(function()
 				return
 			end
 		end
+	end
+
+	if workspace.DistributedGameTime >= MAX_SERVER_AGE then
+		TeleportToPlace()
+		return
 	end
 
 	--// Movement
