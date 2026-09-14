@@ -144,18 +144,18 @@ PositionLabel.TextXAlignment = Enum.TextXAlignment.Left
 PositionLabel.TextTruncate = Enum.TextTruncate.AtEnd
 PositionLabel.Parent = Panel
 
---// Job ID
-local JobLabel = Instance.new("TextLabel")
-JobLabel.Name = "JobId"
-JobLabel.Size = UDim2.new(1, 0, 0.14, 0)
-JobLabel.Position = UDim2.new(0, 0, 0.69, 0)
-JobLabel.BackgroundTransparency = 1
-JobLabel.TextColor3 = Color3.fromRGB(205, 205, 210)
-JobLabel.TextSize = 12
-JobLabel.Font = Enum.Font.GothamMedium
-JobLabel.TextXAlignment = Enum.TextXAlignment.Left
-JobLabel.TextTruncate = Enum.TextTruncate.AtEnd
-JobLabel.Parent = Panel
+--// Place ID
+local PlaceIDLabel = Instance.new("TextLabel")
+PlaceIDLabel.Name = "PlaceId"
+PlaceIDLabel.Size = UDim2.new(1, 0, 0.14, 0)
+PlaceIDLabel.Position = UDim2.new(0, 0, 0.69, 0)
+PlaceIDLabel.BackgroundTransparency = 1
+PlaceIDLabel.TextColor3 = Color3.fromRGB(205, 205, 210)
+PlaceIDLabel.TextSize = 12
+PlaceIDLabel.Font = Enum.Font.GothamMedium
+PlaceIDLabel.TextXAlignment = Enum.TextXAlignment.Left
+PlaceIDLabel.TextTruncate = Enum.TextTruncate.AtEnd
+PlaceIDLabel.Parent = Panel
 
 --// UI Update
 local function updateButton()
@@ -185,7 +185,7 @@ local function updatePosition()
 	end
 end
 
-JobLabel.Text = "Job ID   " .. game.JobId
+PlaceIDLabel.Text = "Place ID   " .. game.PlaceId
 
 Toggle.Activated:Connect(function()
 	Enabled = not Enabled
