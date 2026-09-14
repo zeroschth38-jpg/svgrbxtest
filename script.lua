@@ -31,6 +31,12 @@ local Enabled        = true
 local Equipped = false
 local AttackInterval = 0.5
 local LastAttack = 0
+local TargetCurrency = "Golden Shell"
+
+local IntroPlaceID = 4733278992
+local Floors = {
+	"Eight" = 4737916764
+}
 
 local BlockCache = {}
 
@@ -68,8 +74,8 @@ ScreenGui.Parent = Player:WaitForChild("PlayerGui")
 
 local Panel = Instance.new("Frame")
 Panel.Name = "Panel"
-Panel.Size = UDim2.new(0.19, 0, 0.25, 0)
-Panel.Position = UDim2.new(0.79, 0, 0.36, 0)
+Panel.Size = UDim2.new(0.25, 0, 0.29, 0)
+Panel.Position = UDim2.new(0.73, 0, 0.32, 0)
 Panel.BackgroundColor3 = Color3.fromRGB(22, 22, 26)
 Panel.BorderSizePixel = 0
 Panel.Parent = ScreenGui
@@ -157,6 +163,20 @@ PlaceIDLabel.TextXAlignment = Enum.TextXAlignment.Left
 PlaceIDLabel.TextTruncate = Enum.TextTruncate.AtEnd
 PlaceIDLabel.Parent = Panel
 
+--// Event Current
+local EventCurrentLabel = Instance.new("TextLabel")
+EventCurrentLabel.Name = "EventCurrent"
+EventCurrentLabel.Size = UDim2.new(1, 0, 0.12, 0)
+EventCurrentLabel.Position = UDim2.new(0, 0, 0.84, 0)
+EventCurrentLabel.BackgroundTransparency = 1
+EventCurrentLabel.Text = "Event Current   0"
+EventCurrentLabel.TextColor3 = Color3.fromRGB(205, 205, 210)
+EventCurrentLabel.TextSize = 12
+EventCurrentLabel.Font = Enum.Font.GothamMedium
+EventCurrentLabel.TextXAlignment = Enum.TextXAlignment.Left
+EventCurrentLabel.TextTruncate = Enum.TextTruncate.AtEnd
+EventCurrentLabel.Parent = Panel
+
 --// UI Update
 local function updateButton()
 	if Enabled then
@@ -168,6 +188,18 @@ local function updateButton()
 		Toggle.BackgroundColor3 = Color3.fromRGB(75, 43, 43)
 		Status.Text = "Movement system is paused"
 	end
+end
+
+local function GetItem(String, ItemName)
+	for Item in string.gmatch(String, "([^,]+)") do
+		local Name, Amount = string.match(Item, "([^|]+)|(.+)")
+
+		if Name == ItemName then
+			return Name, tonumber(Amount)
+		end
+	end
+
+	return ItemName, 0
 end
 
 local function updatePosition()
@@ -196,10 +228,10 @@ updateButton()
 updatePosition()
 
 --// Teleport
-local function TeleportToPlace()
+local function TeleportToPlace(placeId: number)
 	local TeleportService = game:GetService("TeleportService")
 
-	TeleportService:Teleport(game.PlaceId, Player)
+	TeleportService:Teleport(placeId or game.PlaceId, Player)
 end
 
 --// Block
@@ -263,6 +295,22 @@ RunService.Heartbeat:Connect(function()
 
 	if Humanoid.Health <= 0 then
 		return
+	end
+
+	if game.PlaceId == IntroPlaceID then
+		TeleportToPlace()
+		return
+	elseif game.PlaceId ~= Floors.Eight then
+		TeleportToPlace(Floors.Eight)
+		return
+	end
+
+	if Player:FindFirstChild("PlayerStats") and Player:FindFirstChild("Inventory") then
+		task.spawn(function()
+			local Inventory = Player:FindFirstChild("Inventory").Value
+			local Item, Amount = GetItem(Inventory, TargetCurrency)
+			EventCurrentLabel.Text = `{Item}  {Amount}`
+		end)
 	end
 
 	if not Enabled then
