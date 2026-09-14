@@ -31,7 +31,9 @@ local Enabled        = true
 local Equipped = false
 local AttackInterval = 0.5
 local LastAttack = 0
-local TargetCurrency = "Golden Shell"
+local TargetCurrency  = "Golden Shell"
+local LastInventory   = nil
+local EventCurrent    = 0
 
 local IntroPlaceID = 4733278992
 local Floors = {
@@ -195,11 +197,34 @@ local function GetItem(String, ItemName)
 		local Name, Amount = string.match(Item, "([^|]+)|(.+)")
 
 		if Name == ItemName then
-			return Name, tonumber(Amount)
+			return Name, tonumber(Amount) or 0
 		end
 	end
 
 	return ItemName, 0
+end
+
+local function updateEventCurrent()
+	local Inventory = Player:FindFirstChild("Inventory")
+
+	if not Inventory then
+		EventCurrent = 0
+		EventCurrentLabel.Text = "Event Current   0"
+		return
+	end
+
+	local InventoryValue = Inventory.Value
+
+	if InventoryValue == LastInventory then
+		return
+	end
+
+	LastInventory = InventoryValue
+
+	local _, Amount = GetItem(InventoryValue, TargetCurrency)
+
+	EventCurrent = Amount
+	EventCurrentLabel.Text = "Event Current   " .. EventCurrent
 end
 
 local function updatePosition()
@@ -298,20 +323,15 @@ RunService.Heartbeat:Connect(function()
 	end
 
 	if game.PlaceId == IntroPlaceID then
-		TeleportToPlace()
 		return
-	elseif game.PlaceId ~= Floors.Eight then
+	end
+	
+	if game.PlaceId ~= Floors.Eight then
 		TeleportToPlace(Floors.Eight)
 		return
 	end
 
-	if Player:FindFirstChild("PlayerStats") and Player:FindFirstChild("Inventory") then
-		task.spawn(function()
-			local Inventory = Player:FindFirstChild("Inventory").Value
-			local Item, Amount = GetItem(Inventory, TargetCurrency)
-			EventCurrentLabel.Text = `{Item}  {Amount}`
-		end)
-	end
+	updateEventCurrent()
 
 	if not Enabled then
 		Humanoid:MoveTo(RootPart.Position)
