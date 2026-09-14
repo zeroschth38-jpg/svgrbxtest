@@ -3,7 +3,8 @@ local Replicated = game:GetService("ReplicatedStorage")
 local StarterGui = game:GetService("StarterGui")
 local RunService = game:GetService("RunService")
 
-local Player = Players.LocalPlayer
+local Player    = Players.LocalPlayer
+local PlayerGui = Player:WaitForChild("PlayerGui")
 
 local Targets = {
 	Vector3.new(-778, 176, 25),
@@ -27,12 +28,19 @@ local RootPart
 local currentTarget = 1
 local Enabled        = true
 
+local Equipped = false
+local AttackInterval = 0.5
+local LastAttack = 0
+
 local BlockCache = {}
 
+--// Character
 local function updateCharacter()
 	Character = Player.Character
 
 	if not Character then
+		Humanoid = nil
+		RootPart = nil
 		return
 	end
 
@@ -44,6 +52,7 @@ updateCharacter()
 
 Player.CharacterAdded:Connect(function()
 	task.wait()
+	currentTarget = 1
 	updateCharacter()
 end)
 
@@ -51,33 +60,137 @@ end)
 local ScreenGui = Instance.new("ScreenGui")
 ScreenGui.Name = "AutoWalkUI"
 ScreenGui.ResetOnSpawn = false
+ScreenGui.IgnoreGuiInset = true
 ScreenGui.Parent = Player:WaitForChild("PlayerGui")
 
-local Button = Instance.new("TextButton")
-Button.Name = "Toggle"
-Button.Size = UDim2.new(0.12, 0, 0.06, 0)
-Button.Position = UDim2.new(0.86, 0, 0.45, 0)
-Button.BackgroundColor3 = Color3.fromRGB(45, 45, 45)
-Button.BorderSizePixel = 0
-Button.TextColor3 = Color3.new(1, 1, 1)
-Button.TextScaled = true
-Button.Font = Enum.Font.GothamBold
-Button.Parent = ScreenGui
+local Panel = Instance.new("Frame")
+Panel.Name = "Panel"
+Panel.Size = UDim2.new(0.19, 0, 0.25, 0)
+Panel.Position = UDim2.new(0.79, 0, 0.36, 0)
+Panel.BackgroundColor3 = Color3.fromRGB(22, 22, 26)
+Panel.BorderSizePixel = 0
+Panel.Parent = ScreenGui
 
-local Corner = Instance.new("UICorner")
-Corner.CornerRadius = UDim.new(0.15, 0)
-Corner.Parent = Button
+local PanelCorner = Instance.new("UICorner")
+PanelCorner.CornerRadius = UDim.new(0.08, 0)
+PanelCorner.Parent = Panel
 
+local PanelStroke = Instance.new("UIStroke")
+PanelStroke.Color = Color3.fromRGB(70, 70, 78)
+PanelStroke.Thickness = 1
+PanelStroke.Transparency = 0.2
+PanelStroke.Parent = Panel
+
+local Padding = Instance.new("UIPadding")
+Padding.PaddingTop = UDim.new(0.07, 0)
+Padding.PaddingBottom = UDim.new(0.07, 0)
+Padding.PaddingLeft = UDim.new(0.07, 0)
+Padding.PaddingRight = UDim.new(0.07, 0)
+Padding.Parent = Panel
+
+--// Title
+local Title = Instance.new("TextLabel")
+Title.Name = "Title"
+Title.Size = UDim2.new(1, 0, 0.16, 0)
+Title.BackgroundTransparency = 1
+Title.Text = "AUTO WALK"
+Title.TextColor3 = Color3.fromRGB(255, 255, 255)
+Title.TextSize = 18
+Title.Font = Enum.Font.GothamBold
+Title.TextXAlignment = Enum.TextXAlignment.Left
+Title.Parent = Panel
+
+--// Status
+local Status = Instance.new("TextLabel")
+Status.Name = "Status"
+Status.Size = UDim2.new(1, 0, 0.11, 0)
+Status.Position = UDim2.new(0, 0, 0.17, 0)
+Status.BackgroundTransparency = 1
+Status.TextColor3 = Color3.fromRGB(150, 150, 158)
+Status.TextSize = 12
+Status.Font = Enum.Font.GothamMedium
+Status.TextXAlignment = Enum.TextXAlignment.Left
+Status.Parent = Panel
+
+--// Toggle
+local Toggle = Instance.new("TextButton")
+Toggle.Name = "Toggle"
+Toggle.Size = UDim2.new(1, 0, 0.19, 0)
+Toggle.Position = UDim2.new(0, 0, 0.30, 0)
+Toggle.BorderSizePixel = 0
+Toggle.TextColor3 = Color3.fromRGB(255, 255, 255)
+Toggle.TextSize = 13
+Toggle.Font = Enum.Font.GothamBold
+Toggle.AutoButtonColor = false
+Toggle.Parent = Panel
+
+local ToggleCorner = Instance.new("UICorner")
+ToggleCorner.CornerRadius = UDim.new(0.2, 0)
+ToggleCorner.Parent = Toggle
+
+--// Position
+local PositionLabel = Instance.new("TextLabel")
+PositionLabel.Name = "Position"
+PositionLabel.Size = UDim2.new(1, 0, 0.14, 0)
+PositionLabel.Position = UDim2.new(0, 0, 0.53, 0)
+PositionLabel.BackgroundTransparency = 1
+PositionLabel.TextColor3 = Color3.fromRGB(205, 205, 210)
+PositionLabel.TextSize = 12
+PositionLabel.Font = Enum.Font.GothamMedium
+PositionLabel.TextXAlignment = Enum.TextXAlignment.Left
+PositionLabel.TextTruncate = Enum.TextTruncate.AtEnd
+PositionLabel.Parent = Panel
+
+--// Job ID
+local JobLabel = Instance.new("TextLabel")
+JobLabel.Name = "JobId"
+JobLabel.Size = UDim2.new(1, 0, 0.14, 0)
+JobLabel.Position = UDim2.new(0, 0, 0.69, 0)
+JobLabel.BackgroundTransparency = 1
+JobLabel.TextColor3 = Color3.fromRGB(205, 205, 210)
+JobLabel.TextSize = 12
+JobLabel.Font = Enum.Font.GothamMedium
+JobLabel.TextXAlignment = Enum.TextXAlignment.Left
+JobLabel.TextTruncate = Enum.TextTruncate.AtEnd
+JobLabel.Parent = Panel
+
+--// UI Update
 local function updateButton()
-	Button.Text = Enabled and "Enabled" or "Disabled"
+	if Enabled then
+		Toggle.Text = "●  AUTO WALK  •  ENABLED"
+		Toggle.BackgroundColor3 = Color3.fromRGB(42, 95, 68)
+		Status.Text = "Movement system is active"
+	else
+		Toggle.Text = "●  AUTO WALK  •  DISABLED"
+		Toggle.BackgroundColor3 = Color3.fromRGB(75, 43, 43)
+		Status.Text = "Movement system is paused"
+	end
 end
 
-Button.Activated:Connect(function()
+local function updatePosition()
+	if RootPart then
+		local Position = RootPart.Position
+
+		PositionLabel.Text = string.format(
+			"Position   X %.1f   Y %.1f   Z %.1f",
+			Position.X,
+			Position.Y,
+			Position.Z
+		)
+	else
+		PositionLabel.Text = "Position   --"
+	end
+end
+
+JobLabel.Text = "Job ID   " .. game.JobId
+
+Toggle.Activated:Connect(function()
 	Enabled = not Enabled
 	updateButton()
 end)
 
 updateButton()
+updatePosition()
 
 --// Teleport
 local function TeleportToPlace()
@@ -129,16 +242,26 @@ local function promptBlockPlayer(plr)
 	end
 
 	task.delay(BLOCK_COOLDOWN, function()
-		if isBlocked(userId) then
-			BlockCache[userId] = nil
-		else
-			BlockCache[userId] = nil
-		end
+		BlockCache[userId] = nil
 	end)
 end
 
+--// Position Update
+RunService.RenderStepped:Connect(function()
+	updatePosition()
+end)
+
 --// Movement + Block
 RunService.Heartbeat:Connect(function()
+	if not Humanoid or not RootPart then
+		updateCharacter()
+		return
+	end
+
+	if Humanoid.Health <= 0 then
+		return
+	end
+
 	if not Enabled then
 		Humanoid:MoveTo(RootPart.Position)
 		return
@@ -161,11 +284,13 @@ RunService.Heartbeat:Connect(function()
 		end
 	end
 
+	--// อย่างน้อย 1 คนถูก Block → Teleport
 	if HasBlockedPlayer then
 		TeleportToPlace()
 		return
 	end
 
+	--// มีผู้เล่นอื่น แต่ยังไม่มีใครถูก Block
 	if HasOtherPlayer then
 		for _, plr in Players:GetPlayers() do
 			if plr == Player then
@@ -180,15 +305,6 @@ RunService.Heartbeat:Connect(function()
 	end
 
 	--// Movement
-	if not Humanoid or not RootPart then
-		updateCharacter()
-		return
-	end
-
-	if Humanoid.Health <= 0 then
-		return
-	end
-
 	local target = Targets[currentTarget]
 
 	if (RootPart.Position - target).Magnitude <= REACH_DISTANCE then
@@ -199,6 +315,7 @@ RunService.Heartbeat:Connect(function()
 		target = Targets[currentTarget]
 	end
 
+	--// Jump
 	if currentTarget ~= #Targets then
 		local heightDifference = target.Y - RootPart.Position.Y
 
@@ -209,12 +326,20 @@ RunService.Heartbeat:Connect(function()
 			Humanoid.Jump = true
 			Humanoid:ChangeState(Enum.HumanoidStateType.Jumping)
 		end
+	else
+		local InputBindableFunction = PlayerGui:FindFirstChild("InputBindableFunction", true) :: BindableFunction
+
+		if not Equipped then
+			InputBindableFunction:Invoke("EquipButton", Enum.UserInputState.Begin)
+			Equipped = true
+		else
+			if os.clock() - LastAttack >= AttackInterval then
+				InputBindableFunction:Invoke("AttackButton", Enum.UserInputState.Begin)
+				LastAttack = os.clock()
+			end
+		end
 	end
 
 	Humanoid.WalkSpeed = 32
 	Humanoid:MoveTo(target)
-end)
-
-Player.CharacterAdded:Connect(function(Character)
-	currentTarget = 1
 end)
