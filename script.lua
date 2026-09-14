@@ -33,7 +33,7 @@ local AttackInterval = 0.5
 local LastAttack = 0
 local TargetCurrency  = "Golden Shell"
 local LastInventory   = nil
-local EventCurrent    = 0
+local EventCurrency    = 0
 
 local TargetPlaceID = 4737916764
 
@@ -162,19 +162,19 @@ PlaceIDLabel.TextXAlignment = Enum.TextXAlignment.Left
 PlaceIDLabel.TextTruncate = Enum.TextTruncate.AtEnd
 PlaceIDLabel.Parent = Panel
 
---// Event Current
-local EventCurrentLabel = Instance.new("TextLabel")
-EventCurrentLabel.Name = "EventCurrent"
-EventCurrentLabel.Size = UDim2.new(1, 0, 0.12, 0)
-EventCurrentLabel.Position = UDim2.new(0, 0, 0.84, 0)
-EventCurrentLabel.BackgroundTransparency = 1
-EventCurrentLabel.Text = "Event Current   0"
-EventCurrentLabel.TextColor3 = Color3.fromRGB(205, 205, 210)
-EventCurrentLabel.TextSize = 12
-EventCurrentLabel.Font = Enum.Font.GothamMedium
-EventCurrentLabel.TextXAlignment = Enum.TextXAlignment.Left
-EventCurrentLabel.TextTruncate = Enum.TextTruncate.AtEnd
-EventCurrentLabel.Parent = Panel
+--// Event Currency
+local EventCurrencyLabel = Instance.new("TextLabel")
+EventCurrencyLabel.Name = "EventCurrency"
+EventCurrencyLabel.Size = UDim2.new(1, 0, 0.12, 0)
+EventCurrencyLabel.Position = UDim2.new(0, 0, 0.84, 0)
+EventCurrencyLabel.BackgroundTransparency = 1
+EventCurrencyLabel.Text = "Event Currency   0"
+EventCurrencyLabel.TextColor3 = Color3.fromRGB(205, 205, 210)
+EventCurrencyLabel.TextSize = 12
+EventCurrencyLabel.Font = Enum.Font.GothamMedium
+EventCurrencyLabel.TextXAlignment = Enum.TextXAlignment.Left
+EventCurrencyLabel.TextTruncate = Enum.TextTruncate.AtEnd
+EventCurrencyLabel.Parent = Panel
 
 --// UI Update
 local function updateButton()
@@ -204,15 +204,15 @@ end
 local function updateEventCurrent()
 	local PlayerStats = Player:FindFirstChild("PlayerStats")
 	if not PlayerStats then
-		EventCurrent = 0
-		EventCurrentLabel.Text = "Event Current   0"
+		EventCurrency = 0
+		EventCurrencyLabel.Text = "Event Currency   0"
 		return
 	end
 	local Inventory = PlayerStats:FindFirstChild("Inventory")
 
 	if not Inventory then
-		EventCurrent = 0
-		EventCurrentLabel.Text = "Event Current   0"
+		EventCurrency = 0
+		EventCurrencyLabel.Text = "Event Currency   0"
 		return
 	end
 
@@ -226,8 +226,8 @@ local function updateEventCurrent()
 
 	local _, Amount = GetItem(InventoryValue, TargetCurrency)
 
-	EventCurrent = Amount
-	EventCurrentLabel.Text = "Event Current   " .. EventCurrent
+	EventCurrency = Amount
+	EventCurrencyLabel.Text = "Event Currency   " .. EventCurrency
 end
 
 local function updatePosition()
