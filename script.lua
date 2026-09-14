@@ -53,6 +53,9 @@ updateCharacter()
 Player.CharacterAdded:Connect(function()
 	task.wait()
 	currentTarget = 1
+	task.delay(0.5, function()
+		Equipped = false
+	end)
 	updateCharacter()
 end)
 
@@ -335,6 +338,7 @@ RunService.Heartbeat:Connect(function()
 		else
 			if os.clock() - LastAttack >= AttackInterval then
 				InputBindableFunction:Invoke("AttackButton", Enum.UserInputState.Begin)
+				InputBindableFunction:Invoke("SkillButton", Enum.UserInputState.Begin)
 				LastAttack = os.clock()
 			end
 		end
