@@ -35,6 +35,8 @@ local TargetCurrency  = "Golden Shell"
 local LastInventory   = nil
 local EventCurrent    = 0
 
+local TargetPlaceID = 4737916764
+
 local BlockCache = {}
 
 --// Character
@@ -319,7 +321,7 @@ RunService.Heartbeat:Connect(function()
 		return
 	end
 
-	if Humanoid.Health <= 0 then
+	if Humanoid.Health <= 0 or game.PlaceId ~= TargetPlaceID then
 		return
 	end
 
