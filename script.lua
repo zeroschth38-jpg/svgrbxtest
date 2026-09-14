@@ -206,7 +206,7 @@ local function updateEventCurrent()
 		EventCurrentLabel.Text = "Event Current   0"
 		return
 	end
-	local Inventory = Player:FindFirstChild("Inventory")
+	local Inventory = PlayerStats:FindFirstChild("Inventory")
 
 	if not Inventory then
 		EventCurrent = 0
