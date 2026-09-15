@@ -35,8 +35,7 @@ local TargetCurrency  = "Golden Shell"
 local LastInventory   = nil
 local EventCurrency    = 0
 
-local TotalBlockInterval = 5
-local LastTotalBlock = 0
+local TotalBlock = 0
 
 local TargetPlaceID = 4737916764
 local MAX_SERVER_AGE = 8 * 60 * 60
@@ -365,15 +364,18 @@ local function promptBlockPlayer(plr)
 end
 
 local function UpdateTotalBlock()
-	LastTotalBlock = os.clock()
 	local success, blockedUserIds = pcall(function()
 		return StarterGui:GetCore("GetBlockedUserIds")
 	end)
 	if success and blockedUserIds then
-		TotalBlockLabel.Text = "Total Block   " .. #blockedUserIds
+		for i, v in blockedUserIds do
+			TotalBlock += 1
+		end
+		TotalBlockLabel.Text = "Total Block   " .. #TotalBlock
 		return
 	end
 end
+UpdateTotalBlock()
 
 --// Position Update
 RunService.RenderStepped:Connect(function()
@@ -382,20 +384,23 @@ end)
 
 --// Movement + Block
 RunService.Heartbeat:Connect(function()
+	if game.PlaceId ~= TargetPlaceID then
+		Enabled = false
+		updateButton()
+		return
+	end
+
 	if not Humanoid or not RootPart then
 		updateCharacter()
 		return
 	end
 
-	if Humanoid.Health <= 0 or game.PlaceId ~= TargetPlaceID then
+	if Humanoid.Health <= 0 then
 		return
 	end
 
 	updateServerAge()
 	updateEventCurrency()
-	if os.clock() - LastTotalBlock >= TotalBlockInterval then
-		UpdateTotalBlock()
-	end
 
 	if not Enabled then
 		Humanoid:MoveTo(RootPart.Position)
