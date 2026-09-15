@@ -387,6 +387,7 @@ RunService.Heartbeat:Connect(function()
 
 	updateServerAge()
 	updateEventCurrency()
+	WalkSpeedLabel.Text = "WalkSpeed   " .. Humanoid.WalkSpeed
 
 	if not Enabled then
 		Humanoid:MoveTo(RootPart.Position)
@@ -473,5 +474,4 @@ RunService.Heartbeat:Connect(function()
 
 	Humanoid.WalkSpeed = 40
 	Humanoid:MoveTo(target)
-	WalkSpeedLabel.Text = "WalkSpeed   " .. Humanoid.WalkSpeed
 end)
