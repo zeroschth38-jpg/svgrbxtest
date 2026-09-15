@@ -160,19 +160,19 @@ PlaceIDLabel.TextXAlignment = Enum.TextXAlignment.Left
 PlaceIDLabel.TextTruncate = Enum.TextTruncate.AtEnd
 PlaceIDLabel.Parent = Panel
 
---// Total Block
-local TotalBlockLabel = Instance.new("TextLabel")
-TotalBlockLabel.Name = "TotalBlock"
-TotalBlockLabel.LayoutOrder = 5
-TotalBlockLabel.Size = UDim2.new(1, 0, 0.11, 0)
-TotalBlockLabel.BackgroundTransparency = 1
-TotalBlockLabel.Text = "Total Block   0"
-TotalBlockLabel.TextColor3 = Color3.fromRGB(205, 205, 210)
-TotalBlockLabel.TextSize = 12
-TotalBlockLabel.Font = Enum.Font.GothamMedium
-TotalBlockLabel.TextXAlignment = Enum.TextXAlignment.Left
-TotalBlockLabel.TextTruncate = Enum.TextTruncate.AtEnd
-TotalBlockLabel.Parent = Panel
+--// WalkSpeed
+local WalkSpeedLabel = Instance.new("TextLabel")
+WalkSpeedLabel.Name = "WalkSpeed"
+WalkSpeedLabel.LayoutOrder = 5
+WalkSpeedLabel.Size = UDim2.new(1, 0, 0.11, 0)
+WalkSpeedLabel.BackgroundTransparency = 1
+WalkSpeedLabel.Text = "WalkSpeed   0"
+WalkSpeedLabel.TextColor3 = Color3.fromRGB(205, 205, 210)
+WalkSpeedLabel.TextSize = 12
+WalkSpeedLabel.Font = Enum.Font.GothamMedium
+WalkSpeedLabel.TextXAlignment = Enum.TextXAlignment.Left
+WalkSpeedLabel.TextTruncate = Enum.TextTruncate.AtEnd
+WalkSpeedLabel.Parent = Panel
 
 --// Position
 local PositionLabel = Instance.new("TextLabel")
@@ -310,7 +310,7 @@ updateButton()
 updatePosition()
 
 --// Teleport
-local function TeleportToPlace(placeId: number)
+local function TeleportToPlace(placeId: number?)
 	local TeleportService = game:GetService("TeleportService")
 
 	TeleportService:Teleport(placeId or game.PlaceId, Player)
@@ -362,20 +362,6 @@ local function promptBlockPlayer(plr)
 		BlockCache[userId] = nil
 	end)
 end
-
-local function UpdateTotalBlock()
-	local success, blockedUserIds = pcall(function()
-		return StarterGui:GetCore("GetBlockedUserIds")
-	end)
-	if success and blockedUserIds then
-		for i, v in blockedUserIds do
-			TotalBlock += 1
-		end
-		TotalBlockLabel.Text = "Total Block   " .. TotalBlock
-		return
-	end
-end
-UpdateTotalBlock()
 
 --// Position Update
 RunService.RenderStepped:Connect(function()
@@ -484,6 +470,8 @@ RunService.Heartbeat:Connect(function()
 		end
 	end
 
+
 	Humanoid.WalkSpeed = 40
 	Humanoid:MoveTo(target)
+	WalkSpeedLabel.Text = "WalkSpeed   " .. Humanoid.WalkSpeed
 end)
