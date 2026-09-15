@@ -35,6 +35,9 @@ local TargetCurrency  = "Golden Shell"
 local LastInventory   = nil
 local EventCurrency    = 0
 
+local TotalBlockInterval = 5
+local LastTotalBlock = 0
+
 local TargetPlaceID = 4737916764
 local MAX_SERVER_AGE = 8 * 60 * 60
 
@@ -282,21 +285,6 @@ local function updateServerAge()
 	)
 end
 
-task.spawn(function()
-	for _ = 1, 10 do
-		local success, blockedUserIds = pcall(function()
-			return StarterGui:GetCore("GetBlockedUserIds")
-		end)
-
-		if success and blockedUserIds then
-			TotalBlockLabel.Text = "Total Block   " .. #blockedUserIds
-			return
-		end
-
-		task.wait(0.5)
-	end
-end)
-
 local function updatePosition()
 	if RootPart then
 		local Position = RootPart.Position
@@ -376,6 +364,17 @@ local function promptBlockPlayer(plr)
 	end)
 end
 
+local function UpdateTotalBlock()
+	LastTotalBlock = os.clock()
+	local success, blockedUserIds = pcall(function()
+		return StarterGui:GetCore("GetBlockedUserIds")
+	end)
+	if success and blockedUserIds then
+		TotalBlockLabel.Text = "Total Block   " .. #blockedUserIds
+		return
+	end
+end
+
 --// Position Update
 RunService.RenderStepped:Connect(function()
 	updatePosition()
@@ -394,6 +393,9 @@ RunService.Heartbeat:Connect(function()
 
 	updateServerAge()
 	updateEventCurrency()
+	if os.clock() - LastTotalBlock >= TotalBlockInterval then
+		UpdateTotalBlock()
+	end
 
 	if not Enabled then
 		Humanoid:MoveTo(RootPart.Position)
