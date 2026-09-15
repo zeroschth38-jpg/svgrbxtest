@@ -289,7 +289,7 @@ local function updatePosition()
 		local Position = RootPart.Position
 
 		PositionLabel.Text = string.format(
-			"Position   X %.1f   Y %.1f   Z %.1f",
+			"Position XYZ   %.1f,   %.1f,   %.1f",
 			Position.X,
 			Position.Y,
 			Position.Z
