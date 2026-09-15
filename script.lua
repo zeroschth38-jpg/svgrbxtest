@@ -371,7 +371,7 @@ local function UpdateTotalBlock()
 		for i, v in blockedUserIds do
 			TotalBlock += 1
 		end
-		TotalBlockLabel.Text = "Total Block   " .. #TotalBlock
+		TotalBlockLabel.Text = "Total Block   " .. TotalBlock
 		return
 	end
 end
