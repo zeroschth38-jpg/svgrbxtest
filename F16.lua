@@ -601,7 +601,7 @@ local function MoveToGoblin(Goblin)
 	end
 
 	local MobHumanoid = Goblin:FindFirstChildOfClass("Humanoid")
-	local MobRoot = Goblin:FindFirstChild("HumanoidRootPart")
+	local MobRoot     = Goblin:FindFirstChild("HumanoidRootPart")
 
 	if not MobHumanoid or not MobRoot or MobHumanoid.Health <= 0 then
 		ClosestTarget = nil
@@ -611,19 +611,11 @@ local function MoveToGoblin(Goblin)
 	local TargetPosition = MobRoot.Position
 
 	if (RootPart.Position - TargetPosition).Magnitude <= GOBLIN_REACH_DISTANCE then
-		Humanoid:Move(Vector3.zero)
+		Humanoid:MoveTo(RootPart.Position)
 		return
 	end
 
-	-- local MoveDirection = GetAvoidanceDirection(TargetPosition)
-
-	-- if not MoveDirection then
-	-- 	return
-	-- end
-
-	-- CheckStuck()
-
-	Humanoid:Move(MoveDirection, false)
+	Humanoid:MoveTo(TargetPosition)
 end
 
 --// Position Update
