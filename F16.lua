@@ -29,36 +29,32 @@ local RootPart
 local currentTarget = 1
 local Enabled        = true
 
-local Equipped = false
+local Equipped      = false
 local AttackInterval = 0.5
-local LastAttack = 0
-local TargetCurrency  = "Golden Shell"
-local LastInventory   = nil
-local EventCurrency    = 0
+local LastAttack    = 0
+local TargetCurrency = "Golden Shell"
+local LastInventory  = nil
+local EventCurrency  = 0
 
-local VERSION = "v0.34"
+local VERSION = "v0.35"
 
-local TargetPlaceID = 11987539001
+local TargetPlaceID  = 11987539001
 local MAX_SERVER_AGE = 8 * 60 * 60
 
 --// Combat
-local TARGET_ENTITY_NAME   = "Goblin"
-local REACH_DISTANCE       = 5
+local TARGET_ENTITY_NAME    = "Goblin"
+local REACH_DISTANCE        = 5
 local GOBLIN_REACH_DISTANCE = 7
-local JUMP_HEIGHT          = 3
-local BLOCK_COOLDOWN       = 3
+local JUMP_HEIGHT           = 3
+local BLOCK_COOLDOWN        = 3
 
-local OBSTACLE_DISTANCE    = 8
-local SIDE_DISTANCE        = 6
-local STUCK_DISTANCE       = 1.5
-local STUCK_TIME           = 1.2
+--// Retreat
+local RETREAT_DISTANCE = 30
+local RETREAT_DIRECTIONS = 16
 
 local ClosestTarget = nil
-local LastMovePosition = nil
-local StuckSince = 0
-local AvoidDirection = 1
 
-local ConsumeCooldown = 30
+local ConsumeCooldown  = 30
 local LastConsumeStamp = 0
 
 local BlockCache = {}
@@ -82,11 +78,8 @@ updateCharacter()
 Player.CharacterAdded:Connect(function()
 	task.wait()
 
-	currentTarget    = 1
-	ClosestTarget    = nil
-	LastMovePosition = nil
-	StuckSince       = 0
-	AvoidDirection   = 1
+	currentTarget = 1
+	ClosestTarget = nil
 
 	task.delay(0.5, function()
 		Equipped = false
@@ -101,6 +94,7 @@ ScreenGui.Name = "AutoFarmUI"
 ScreenGui.ResetOnSpawn = false
 ScreenGui.IgnoreGuiInset = true
 ScreenGui.Parent = PlayerGui
+
 if game.PlaceId == TargetPlaceID then
 	ScreenGui.DisplayOrder = 1
 end
@@ -143,7 +137,7 @@ Title.Name = "Title"
 Title.LayoutOrder = 1
 Title.Size = UDim2.new(1, 0, 0.16, 0)
 Title.BackgroundTransparency = 1
-Title.Text = "AUTO FARMING (F16) "..VERSION
+Title.Text = "AUTO FARMING (F16) " .. VERSION
 Title.TextColor3 = Color3.fromRGB(255, 255, 255)
 Title.TextSize = 18
 Title.Font = Enum.Font.GothamBold
@@ -305,11 +299,13 @@ end
 
 local function updateEventCurrency()
 	local PlayerStats = Player:FindFirstChild("PlayerStats")
+
 	if not PlayerStats then
 		EventCurrency = 0
 		EventCurrencyLabel.Text = "Event Currency   0"
 		return
 	end
+
 	local Inventory = PlayerStats:FindFirstChild("Inventory")
 
 	if not Inventory then
@@ -426,12 +422,14 @@ local function promptBlockPlayer(plr)
 	end)
 end
 
+--// Line Of Sight
 local function CanSeeGoblin(Goblin)
 	if not RootPart or not Goblin then
 		return false
 	end
 
 	local MobRoot = Goblin:FindFirstChild("HumanoidRootPart")
+
 	if not MobRoot then
 		return false
 	end
@@ -454,6 +452,7 @@ local function CanSeeGoblin(Goblin)
 	return Result.Instance:IsDescendantOf(Goblin)
 end
 
+--// Closest Visible Goblin
 local function GetClosestGoblin()
 	local MobFolder = workspace:FindFirstChild("Mobs")
 
@@ -486,6 +485,7 @@ local function GetClosestGoblin()
 		end
 
 		local Entity = Config:FindFirstChild("Entity")
+
 		if not Entity or Entity.Value ~= TARGET_ENTITY_NAME then
 			continue
 		end
@@ -503,6 +503,143 @@ local function GetClosestGoblin()
 	return ClosestMob
 end
 
+--// Retreat Obstacle Check
+local function IsPathClear(TargetPosition)
+	if not RootPart then
+		return false
+	end
+
+	local Origin = RootPart.Position
+	local Direction = TargetPosition - Origin
+
+	local RaycastParams = RaycastParams.new()
+	RaycastParams.FilterType = Enum.RaycastFilterType.Exclude
+	RaycastParams.FilterDescendantsInstances = {
+		Character,
+	}
+
+	local Result = workspace:Raycast(
+		Origin,
+		Direction,
+		RaycastParams
+	)
+
+	return Result == nil
+end
+
+--// Get All Living Goblins
+local function GetLivingGoblins()
+	local MobFolder = workspace:FindFirstChild("Mobs")
+
+	if not MobFolder then
+		return {}
+	end
+
+	local Goblins = {}
+
+	for _, mob in MobFolder:GetChildren() do
+		if not mob:IsA("Model") then
+			continue
+		end
+
+		local Config      = mob:FindFirstChild("Config")
+		local MobHumanoid = mob:FindFirstChildOfClass("Humanoid")
+		local MobRoot     = mob:FindFirstChild("HumanoidRootPart")
+
+		if not Config or not MobHumanoid or not MobRoot then
+			continue
+		end
+
+		local Entity = Config:FindFirstChild("Entity")
+
+		if not Entity or Entity.Value ~= TARGET_ENTITY_NAME then
+			continue
+		end
+
+		if MobHumanoid.Health <= 0 then
+			continue
+		end
+
+		table.insert(Goblins, mob)
+	end
+
+	return Goblins
+end
+
+--// Calculate Retreat Position
+local function GetRetreatPosition()
+	if not RootPart then
+		return nil
+	end
+
+	local Goblins = GetLivingGoblins()
+
+	if #Goblins == 0 then
+		return nil
+	end
+
+	local RetreatDirection = Vector3.zero
+
+	for _, Goblin in Goblins do
+		local MobRoot = Goblin:FindFirstChild("HumanoidRootPart")
+
+		if MobRoot then
+			local Offset = RootPart.Position - MobRoot.Position
+			local Distance = Offset.Magnitude
+
+			if Distance > 0 then
+				RetreatDirection += Offset.Unit / math.max(Distance, 1)
+			end
+		end
+	end
+
+	if RetreatDirection.Magnitude <= 0 then
+		return nil
+	end
+
+	RetreatDirection = RetreatDirection.Unit
+
+	local BestPosition = nil
+	local BestScore = -math.huge
+
+	for Index = 0, RETREAT_DIRECTIONS - 1 do
+		local Angle = (math.pi * 2 / RETREAT_DIRECTIONS) * Index
+
+		local Direction = Vector3.new(
+			math.cos(Angle),
+			0,
+			math.sin(Angle)
+		)
+
+		local TargetPosition = RootPart.Position + Direction * RETREAT_DISTANCE
+
+		if not IsPathClear(TargetPosition) then
+			continue
+		end
+
+		local Score = Direction:Dot(RetreatDirection)
+
+		if Score > BestScore then
+			BestScore = Score
+			BestPosition = TargetPosition
+		end
+	end
+
+	return BestPosition
+end
+
+--// Retreat
+local function RetreatFromGoblins()
+	local RetreatPosition = GetRetreatPosition()
+
+	if RetreatPosition then
+		Humanoid:MoveTo(RetreatPosition)
+	else
+		Humanoid:Move(Vector3.zero)
+	end
+end
+
+--// Move To Goblin
 local function MoveToGoblin(Goblin)
 	if not Goblin or not RootPart then
 		return
@@ -519,7 +656,7 @@ local function MoveToGoblin(Goblin)
 	local TargetPosition = MobRoot.Position
 
 	if (RootPart.Position - TargetPosition).Magnitude <= GOBLIN_REACH_DISTANCE then
-		Humanoid:MoveTo(RootPart.Position)
+		Humanoid:Move(Vector3.zero)
 		return
 	end
 
@@ -553,10 +690,34 @@ RunService.Heartbeat:Connect(function()
 	WalkSpeedLabel.Text = "WalkSpeed   " .. Humanoid.WalkSpeed
 
 	if not Enabled then
-		Humanoid:MoveTo(RootPart.Position)
+		Humanoid:Move(Vector3.zero)
 		return
 	end
 
+	--// Emergency Retreat
+	if Humanoid.Health <= Humanoid.MaxHealth * 0.30 then
+		ClosestTarget = nil
+
+		local UseConsumable = Replicated:FindFirstChild("UseConsumable", true)
+		local PlayerStats = Player:FindFirstChild("PlayerStats")
+
+		if UseConsumable and PlayerStats then
+			local LastConsumed = PlayerStats:FindFirstChild("LastConsumed")
+
+			if LastConsumed
+				and LastConsumed.Value ~= ""
+				and os.clock() - LastConsumeStamp >= ConsumeCooldown
+			then
+				LastConsumeStamp = os.clock()
+				UseConsumable:InvokeServer(LastConsumed.Value)
+			end
+		end
+
+		RetreatFromGoblins()
+		return
+	end
+
+	--// Player Check
 	local HasOtherPlayer = false
 	local HasBlockedPlayer = false
 
@@ -592,6 +753,7 @@ RunService.Heartbeat:Connect(function()
 		end
 	end
 
+	--// Server Age
 	if workspace.DistributedGameTime >= MAX_SERVER_AGE then
 		TeleportToPlace()
 		return
@@ -599,43 +761,42 @@ RunService.Heartbeat:Connect(function()
 
 	--// Movement
 	local target = Targets[currentTarget]
-	
+
 	if currentTarget < #Targets then
 		if (RootPart.Position - target).Magnitude <= REACH_DISTANCE then
 			currentTarget += 1
 			target = Targets[currentTarget]
 		end
-	
-		-- วิ่งตาม Waypoint
+
 		Humanoid:MoveTo(target)
 	else
 		--// Waypoint Reached
 		if not ClosestTarget then
 			ClosestTarget = GetClosestGoblin()
 		end
-	
+
 		local GoblinHumanoid = ClosestTarget and ClosestTarget:FindFirstChildOfClass("Humanoid")
 		local GoblinRoot     = ClosestTarget and ClosestTarget:FindFirstChild("HumanoidRootPart")
-	
+
 		if not ClosestTarget
 			or not GoblinHumanoid
 			or not GoblinRoot
 			or GoblinHumanoid.Health <= 0
 			or not GoblinRoot:IsDescendantOf(workspace)
+			or not CanSeeGoblin(ClosestTarget)
 		then
 			ClosestTarget = GetClosestGoblin()
 		end
-	
+
 		if ClosestTarget then
 			MoveToGoblin(ClosestTarget)
-			print("Found Closest Target:", ClosestTarget, #Targets, currentTarget)
 		end
 	end
 
 	--// Jump
 	if currentTarget < #Targets then
 		local heightDifference = target.Y - RootPart.Position.Y
-	
+
 		if heightDifference >= JUMP_HEIGHT
 			and Humanoid.FloorMaterial ~= Enum.Material.Air
 			and Humanoid:GetState() ~= Enum.HumanoidStateType.Jumping
@@ -645,17 +806,19 @@ RunService.Heartbeat:Connect(function()
 		end
 	end
 
+	--// Combat
 	if currentTarget == #Targets then
 		local InputBindableFunction = PlayerGui:FindFirstChild("InputBindableFunction", true) :: BindableFunction
-		if InputBindableFunction then
 
+		if InputBindableFunction then
 			if ClosestTarget then
 				if not Equipped then
 					InputBindableFunction:Invoke("EquipButton", Enum.UserInputState.Begin)
 					Equipped = true
 				end
+
 				local MobHumanoid = ClosestTarget:FindFirstChildOfClass("Humanoid")
-				local MobRoot = ClosestTarget:FindFirstChild("HumanoidRootPart")
+				local MobRoot     = ClosestTarget:FindFirstChild("HumanoidRootPart")
 
 				if MobHumanoid and MobRoot and MobHumanoid.Health > 0 then
 					local Distance = (RootPart.Position - MobRoot.Position).Magnitude
@@ -670,30 +833,14 @@ RunService.Heartbeat:Connect(function()
 					end
 				end
 			end
-			if Humanoid.Health <= Humanoid.MaxHealth * 0.35 then
-				local UseConsumable = Replicated:FindFirstChild("UseConsumable", true)
-				local PlayerStats = Player:FindFirstChild("PlayerStats")
-			
-				if UseConsumable and PlayerStats then
-					local LastConsumed = PlayerStats:FindFirstChild("LastConsumed")
-			
-					if LastConsumed
-						and LastConsumed.Value ~= ""
-						and os.clock() - LastConsumeStamp >= ConsumeCooldown
-					then
-						LastConsumeStamp = os.clock()
-						UseConsumable:InvokeServer(LastConsumed.Value)
-					end
-				end
-			end
 		end
 	else
 		local InputBindableFunction = PlayerGui:FindFirstChild("InputBindableFunction", true) :: BindableFunction
+
 		if InputBindableFunction then
 			InputBindableFunction:Invoke("InteractButton", Enum.UserInputState.Begin)
 		end
 	end
-
 
 	Humanoid.WalkSpeed = 48
 end)
