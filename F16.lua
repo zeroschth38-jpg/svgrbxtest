@@ -25,7 +25,7 @@ local Targets = {
 	Vector3.new(-1792, 175, 2769),
 }
 
-local VERSION = "v0.67"
+local VERSION = "v0.68"
 
 --// Farm Area
 local FARM_CENTER = Vector3.new(-1715, 173, 2798)
@@ -56,7 +56,7 @@ local MAX_SERVER_AGE = 8 * 60 * 60
 local TARGET_ENTITY_NAME     = "Goblin"
 local REACH_DISTANCE         = 5
 local GOBLIN_REACH_DISTANCE  = 7
-local GOBLIN_OFFSET_DISTANCE = 4
+local GOBLIN_OFFSET_DISTANCE = 8
 local JUMP_HEIGHT            = 3
 local BLOCK_COOLDOWN         = 3
 local DEATH_COUNT            = 0
