@@ -36,7 +36,7 @@ local TargetCurrency = "Golden Shell"
 local LastInventory  = nil
 local EventCurrency  = 0
 
-local VERSION = "v0.43"
+local VERSION = "v0.44"
 
 local TargetPlaceID  = 11987539001
 local MAX_SERVER_AGE = 8 * 60 * 60
@@ -697,7 +697,7 @@ RunService.Heartbeat:Connect(function()
 	end
 
 	--// Emergency Retreat
-	if Humanoid.Health <= Humanoid.MaxHealth * 0.30 then
+	if Humanoid.Health <= Humanoid.MaxHealth * 0.4 then
 		ClosestTarget = nil
 
 		local UseConsumable = Replicated:FindFirstChild("UseConsumable", true)
