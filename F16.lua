@@ -20,12 +20,11 @@ local Targets = {
 	Vector3.new(-1364, 172, 1962),
 	Vector3.new(-1363, 174, 2068),
 	Vector3.new(-1437, 176, 2494),
-	-- Vector3.new(-1402, 175, 2524),
 	Vector3.new(-1654, 174, 2619),
 	Vector3.new(-1792, 175, 2769),
 }
 
-local VERSION = "v0.6969"
+local VERSION = "v0.69"
 
 --// Farm Area
 local FARM_CENTER = Vector3.new(-1715, 173, 2798)
@@ -40,7 +39,7 @@ local Humanoid
 local RootPart
 
 local currentTarget = 1
-local Enabled        = true
+local Enabled       = true
 
 local Equipped       = false
 local AttackInterval = 0.5
@@ -53,13 +52,16 @@ local TargetPlaceID  = 11987539001
 local MAX_SERVER_AGE = 8 * 60 * 60
 
 --// Combat
-local TARGET_ENTITY_NAME     = "Goblin"
-local REACH_DISTANCE         = 5
-local GOBLIN_REACH_DISTANCE  = 7
--- local GOBLIN_OFFSET_DISTANCE = 6.5
-local JUMP_HEIGHT            = 3
-local BLOCK_COOLDOWN         = 3
-local DEATH_COUNT            = 0
+local TARGET_ENTITY_PRIORITY = {
+	-- [1] = "Leader Goblin",
+	[1] = "Goblin",
+}
+
+local REACH_DISTANCE        = 5
+local GOBLIN_REACH_DISTANCE = 7
+local JUMP_HEIGHT           = 3
+local BLOCK_COOLDOWN        = 3
+local DEATH_COUNT           = 0
 
 --// Retreat
 local RETREAT_DISTANCE   = 30
@@ -84,6 +86,11 @@ local function updateCharacter()
 
 	Humanoid = Character:FindFirstChildOfClass("Humanoid")
 	RootPart = Character:FindFirstChild("HumanoidRootPart")
+
+	Humanoid:SetStateEnabled(Enum.HumanoidStateType.Ragdoll, false)
+	Humanoid:SetStateEnabled(Enum.HumanoidStateType.FallingDown, false)
+	Humanoid:SetStateEnabled(Enum.HumanoidStateType.Physics, false)
+	Humanoid:SetStateEnabled(Enum.HumanoidStateType.Climbing, false)
 end
 
 updateCharacter()
@@ -450,7 +457,7 @@ local function IsInsideFarmArea(Position)
 		return false
 	end
 
-	local DeadzoneOffset = Position - FARM_DEADZONE_CENTER
+	local DeadzoneOffset   = Position - FARM_DEADZONE_CENTER
 	local DeadzoneDistance = Vector3.new(DeadzoneOffset.X, 0, DeadzoneOffset.Z).Magnitude
 
 	if DeadzoneDistance <= FARM_DEADZONE_RADIUS then
@@ -497,8 +504,8 @@ local function IsPathThroughWater(TargetPosition)
 		return true
 	end
 
-	local Origin = RootPart.Position
-	local Offset = TargetPosition - Origin
+	local Origin   = RootPart.Position
+	local Offset   = TargetPosition - Origin
 	local Distance = Offset.Magnitude
 
 	if Distance <= 0 then
@@ -526,8 +533,8 @@ local function IsPathThroughDeadzone(TargetPosition)
 		return false
 	end
 
-	local Origin = RootPart.Position
-	local Offset = TargetPosition - Origin
+	local Origin   = RootPart.Position
+	local Offset   = TargetPosition - Origin
 	local Distance = Offset.Magnitude
 
 	if Distance <= 0 then
@@ -564,7 +571,7 @@ local function CanSeeGoblin(Goblin)
 		return false
 	end
 
-	local Origin = RootPart.Position
+	local Origin    = RootPart.Position
 	local Direction = MobRoot.Position - Origin
 
 	local RaycastParams = RaycastParams.new()
@@ -590,73 +597,69 @@ local function GetClosestGoblin()
 		return nil
 	end
 
-	local ClosestLeader         = nil
-	local ClosestLeaderDistance = math.huge
-	local ClosestGoblin         = nil
-	local ClosestGoblinDistance = math.huge
+	for _, EntityPriority in TARGET_ENTITY_PRIORITY do
+		local ClosestMob      = nil
+		local ClosestDistance = math.huge
 
-	for _, mob in MobFolder:GetChildren() do
-		if not mob:IsA("Model") then
-			continue
-		end
-
-		local Config = mob:FindFirstChild("Config")
-
-		if not Config then
-			continue
-		end
-
-		local MobHumanoid = mob:FindFirstChildOfClass("Humanoid")
-		local MobRoot     = mob:FindFirstChild("HumanoidRootPart")
-
-		if not MobHumanoid or not MobRoot then
-			continue
-		end
-
-		if MobHumanoid.Health <= 0 then
-			continue
-		end
-
-		local Entity = Config:FindFirstChild("Entity")
-
-		if not Entity then
-			continue
-		end
-
-		if Entity.Value ~= "Goblin" and Entity.Value ~= "Leader Goblin" then
-			continue
-		end
-
-		local Distance = (MobRoot.Position - RootPart.Position).Magnitude
-
-		if not IsInsideFarmArea(MobRoot.Position) then
-			continue
-		end
-
-		--// Ignore Goblins that are in water
-		if IsWaterAtPosition(MobRoot.Position, mob) then
-			continue
-		end
-
-		--// Ignore Goblins that require crossing water
-		if not CanSeeGoblin(mob) or IsPathThroughWater(MobRoot.Position) then
-			continue
-		end
-
-		if Entity.Value == "Leader Goblin" then
-			if Distance < ClosestLeaderDistance then
-				ClosestLeaderDistance = Distance
-				ClosestLeader         = mob
+		for _, mob in MobFolder:GetChildren() do
+			if not mob:IsA("Model") then
+				continue
 			end
-		elseif Distance < ClosestGoblinDistance then
-			ClosestGoblinDistance = Distance
-			ClosestGoblin         = mob
+
+			local Config = mob:FindFirstChild("Config")
+
+			if not Config then
+				continue
+			end
+
+			local MobHumanoid = mob:FindFirstChildOfClass("Humanoid")
+			local MobRoot     = mob:FindFirstChild("HumanoidRootPart")
+
+			if not MobHumanoid or not MobRoot then
+				continue
+			end
+
+			if MobHumanoid.Health <= 0 then
+				continue
+			end
+
+			local Entity = Config:FindFirstChild("Entity")
+
+			if not Entity or Entity.Value ~= EntityPriority then
+				continue
+			end
+
+			local Distance = (MobRoot.Position - RootPart.Position).Magnitude
+
+			if not IsInsideFarmArea(MobRoot.Position) then
+				continue
+			end
+
+			--// Ignore Goblins that are in water
+			if IsWaterAtPosition(MobRoot.Position, mob) then
+				continue
+			end
+
+			--// Ignore Goblins that require crossing water
+			if not CanSeeGoblin(mob) or IsPathThroughWater(MobRoot.Position) then
+				continue
+			end
+
+			if Distance < ClosestDistance then
+				ClosestDistance = Distance
+				ClosestMob      = mob
+			end
+		end
+
+		if ClosestMob then
+			return ClosestMob
 		end
 	end
 
-	return ClosestLeader or ClosestGoblin
+	return nil
 end
 
+--// Retreat Obstacle Check
 local function IsPathClear(TargetPosition)
 	if not RootPart then
 		return false
@@ -800,11 +803,11 @@ local function GetRetreatPosition()
 		)
 
 		local TargetPosition = RootPart.Position + Direction * RETREAT_DISTANCE
-		
+
 		if not IsInsideFarmArea(TargetPosition) then
 			continue
 		end
-		
+
 		if not IsPathClear(TargetPosition) then
 			continue
 		end
@@ -904,6 +907,7 @@ RunService.Heartbeat:Connect(function()
 
 	updateServerAge()
 	updateEventCurrency()
+
 	WalkSpeedLabel.Text = "WalkSpeed   " .. Humanoid.WalkSpeed .. " | Death   " .. DEATH_COUNT .. " | WP   " .. currentTarget .. "/" .. #Targets
 
 	if not Enabled then
@@ -916,7 +920,7 @@ RunService.Heartbeat:Connect(function()
 		-- ClosestTarget = nil
 
 		local UseConsumable = Replicated:FindFirstChild("UseConsumable", true)
-		local PlayerStats = Player:FindFirstChild("PlayerStats")
+		local PlayerStats   = Player:FindFirstChild("PlayerStats")
 
 		if UseConsumable and PlayerStats then
 			local LastConsumed = PlayerStats:FindFirstChild("LastConsumed")
@@ -935,7 +939,7 @@ RunService.Heartbeat:Connect(function()
 	end
 
 	--// Player Check
-	local HasOtherPlayer = false
+	local HasOtherPlayer  = false
 	local HasBlockedPlayer = false
 
 	for _, plr in Players:GetPlayers() do
@@ -993,24 +997,24 @@ RunService.Heartbeat:Connect(function()
 		if not ClosestTarget then
 			ClosestTarget = GetClosestGoblin()
 		end
-		
+
 		local GoblinHumanoid = ClosestTarget and ClosestTarget:FindFirstChildOfClass("Humanoid")
 		local GoblinRoot     = ClosestTarget and ClosestTarget:FindFirstChild("HumanoidRootPart")
-		
+
 		--// Only abandon target if the target itself becomes invalid
 		if ClosestTarget
 			and (
 				not GoblinHumanoid
-				or not GoblinRoot
-				or GoblinHumanoid.Health <= 0
-				or not GoblinRoot:IsDescendantOf(workspace)
-				or not IsInsideFarmArea(GoblinRoot.Position)
-				or IsWaterAtPosition(GoblinRoot.Position, ClosestTarget)
+					or not GoblinRoot
+					or GoblinHumanoid.Health <= 0
+					or not GoblinRoot:IsDescendantOf(workspace)
+					or not IsInsideFarmArea(GoblinRoot.Position)
+					or IsWaterAtPosition(GoblinRoot.Position, ClosestTarget)
 			)
 		then
 			ClosestTarget = GetClosestGoblin()
 		end
-		
+
 		if ClosestTarget then
 			MoveToGoblin(ClosestTarget)
 		end
@@ -1043,26 +1047,28 @@ RunService.Heartbeat:Connect(function()
 		if InputBindableFunction then
 			if ClosestTarget then
 				local Sword = Character:FindFirstChild("Sword")
+
 				if Sword then
 					local MainWeld = Sword:FindFirstChild("MainWeld", true)
+
 					if not Equipped or (MainWeld and MainWeld.Part1 and MainWeld.Part1.Name == "UpperTorso") then
 						Equipped = true
 						InputBindableFunction:Invoke("EquipButton", Enum.UserInputState.Begin)
 						warn("SHOULD EQUIP SWORD NOW!")
 						return
 					end
-	
+
 					local MobHumanoid = ClosestTarget:FindFirstChildOfClass("Humanoid")
 					local MobRoot     = ClosestTarget:FindFirstChild("HumanoidRootPart")
-	
+
 					if MobHumanoid and MobRoot and MobHumanoid.Health > 0 then
 						local Distance = (RootPart.Position - MobRoot.Position).Magnitude
-	
+
 						if Distance <= GOBLIN_REACH_DISTANCE then
 							if os.clock() - LastAttack >= AttackInterval then
 								InputBindableFunction:Invoke("AttackButton", Enum.UserInputState.Begin)
 								InputBindableFunction:Invoke("SkillButton", Enum.UserInputState.Begin)
-	
+
 								LastAttack = os.clock()
 							end
 						end
