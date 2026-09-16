@@ -36,7 +36,7 @@ local TargetCurrency = "Golden Shell"
 local LastInventory  = nil
 local EventCurrency  = 0
 
-local VERSION = "v0.47"
+local VERSION = "v0.5"
 
 local TargetPlaceID  = 11987539001
 local MAX_SERVER_AGE = 8 * 60 * 60
@@ -656,27 +656,50 @@ local function GetRetreatPosition()
 
 	local RetreatDirection = Vector3.zero
 
-	for _, Goblin in Goblins do
-		local MobRoot = Goblin:FindFirstChild("HumanoidRootPart")
+	--// Prefer current target if it is still alive
+	if ClosestTarget
+		and ClosestTarget:IsDescendantOf(workspace)
+	then
+		local TargetHumanoid = ClosestTarget:FindFirstChildOfClass("Humanoid")
+		local TargetRoot     = ClosestTarget:FindFirstChild("HumanoidRootPart")
 
-		if MobRoot then
-			local Offset = RootPart.Position - MobRoot.Position
+		if TargetHumanoid
+			and TargetRoot
+			and TargetHumanoid.Health > 0
+		then
+			local Offset   = RootPart.Position - TargetRoot.Position
 			local Distance = Offset.Magnitude
 
 			if Distance > 0 then
-				RetreatDirection += Offset.Unit / math.max(Distance, 1)
+				RetreatDirection = Offset.Unit
 			end
 		end
 	end
 
+	--// Fallback: calculate direction from all living Goblins
 	if RetreatDirection.Magnitude <= 0 then
-		return nil
+		for _, Goblin in Goblins do
+			local MobRoot = Goblin:FindFirstChild("HumanoidRootPart")
+
+			if MobRoot then
+				local Offset   = RootPart.Position - MobRoot.Position
+				local Distance = Offset.Magnitude
+
+				if Distance > 0 then
+					RetreatDirection += Offset.Unit / math.max(Distance, 1)
+				end
+			end
+		end
+
+		if RetreatDirection.Magnitude <= 0 then
+			return nil
+		end
+
+		RetreatDirection = RetreatDirection.Unit
 	end
 
-	RetreatDirection = RetreatDirection.Unit
-
 	local BestPosition = nil
-	local BestScore = -math.huge
+	local BestScore    = -math.huge
 
 	for Index = 0, RETREAT_DIRECTIONS - 1 do
 		local Angle = (math.pi * 2 / RETREAT_DIRECTIONS) * Index
@@ -696,7 +719,7 @@ local function GetRetreatPosition()
 		local Score = Direction:Dot(RetreatDirection)
 
 		if Score > BestScore then
-			BestScore = Score
+			BestScore    = Score
 			BestPosition = TargetPosition
 		end
 	end
@@ -772,7 +795,7 @@ RunService.Heartbeat:Connect(function()
 
 	--// Emergency Retreat
 	if Humanoid.Health <= Humanoid.MaxHealth * 0.4 then
-		ClosestTarget = nil
+		-- ClosestTarget = nil
 
 		local UseConsumable = Replicated:FindFirstChild("UseConsumable", true)
 		local PlayerStats = Player:FindFirstChild("PlayerStats")
