@@ -47,7 +47,7 @@ local TargetCurrency = "Golden Shell"
 local LastInventory  = nil
 local EventCurrency  = 0
 
-local VERSION = "v0.62"
+local VERSION = "v0.63"
 
 local TargetPlaceID  = 11987539001
 local MAX_SERVER_AGE = 8 * 60 * 60
@@ -517,6 +517,40 @@ local function IsPathThroughWater(TargetPosition)
 	return IsWaterAtPosition(TargetPosition)
 end
 
+--// Deadzone Path Check
+local DEADZONE_SAMPLE_DISTANCE = 2
+
+local function IsPathThroughDeadzone(TargetPosition)
+	if not RootPart or not TargetPosition then
+		return false
+	end
+
+	local Origin = RootPart.Position
+	local Offset = TargetPosition - Origin
+	local Distance = Offset.Magnitude
+
+	if Distance <= 0 then
+		local DeadzoneOffset   = Origin - FARM_DEADZONE_CENTER
+		local DeadzoneDistance = Vector3.new(DeadzoneOffset.X, 0, DeadzoneOffset.Z).Magnitude
+
+		return DeadzoneDistance <= FARM_DEADZONE_RADIUS
+	end
+
+	local Direction = Offset.Unit
+
+	for DistanceTravelled = 0, Distance, DEADZONE_SAMPLE_DISTANCE do
+		local Position = Origin + Direction * DistanceTravelled
+		local DeadzoneOffset   = Position - FARM_DEADZONE_CENTER
+		local DeadzoneDistance = Vector3.new(DeadzoneOffset.X, 0, DeadzoneOffset.Z).Magnitude
+
+		if DeadzoneDistance <= FARM_DEADZONE_RADIUS then
+			return true
+		end
+	end
+
+	return false
+end
+
 --// Line Of Sight
 local function CanSeeGoblin(Goblin)
 	if not RootPart or not Goblin then
@@ -802,6 +836,8 @@ local function MoveToGoblin(Goblin)
 	end
 
 	local TargetPosition = MobRoot.Position
+
+	--// Target outside farm area / deadzone
 	if not IsInsideFarmArea(TargetPosition) then
 		ClosestTarget = nil
 		return
@@ -814,6 +850,12 @@ local function MoveToGoblin(Goblin)
 
 	--// Never cross water to reach target
 	if IsPathThroughWater(TargetPosition) then
+		Humanoid:Move(Vector3.zero)
+		return
+	end
+
+	--// Never enter deadzone
+	if IsPathThroughDeadzone(TargetPosition) then
 		Humanoid:Move(Vector3.zero)
 		return
 	end
