@@ -29,6 +29,10 @@ local Targets = {
 local FARM_CENTER = Vector3.new(-1715, 173, 2798)
 local FARM_RADIUS = 100
 
+--// Farm Deadzone
+local FARM_DEADZONE_CENTER = Vector3.new(-1681, 173, 2821)
+local FARM_DEADZONE_RADIUS = 5
+
 local Character
 local Humanoid
 local RootPart
@@ -43,7 +47,7 @@ local TargetCurrency = "Golden Shell"
 local LastInventory  = nil
 local EventCurrency  = 0
 
-local VERSION = "v0.6"
+local VERSION = "v0.61"
 
 local TargetPlaceID  = 11987539001
 local MAX_SERVER_AGE = 8 * 60 * 60
@@ -439,8 +443,20 @@ local function IsInsideFarmArea(Position)
 	end
 
 	local Offset = Position - FARM_CENTER
+	local Distance = Vector3.new(Offset.X, 0, Offset.Z).Magnitude
 
-	return Vector3.new(Offset.X, 0, Offset.Z).Magnitude <= FARM_RADIUS
+	if Distance > FARM_RADIUS then
+		return false
+	end
+
+	local DeadzoneOffset = Position - FARM_DEADZONE_CENTER
+	local DeadzoneDistance = Vector3.new(DeadzoneOffset.X, 0, DeadzoneOffset.Z).Magnitude
+
+	if DeadzoneDistance <= FARM_DEADZONE_RADIUS then
+		return false
+	end
+
+	return true
 end
 
 --// Water Check
