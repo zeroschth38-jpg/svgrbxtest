@@ -42,7 +42,7 @@ local currentTarget = 1
 local Enabled       = true
 
 local Equipped       = false
-local AttackInterval = 0.5
+local AttackInterval = 0.25
 local LastAttack     = 0
 local TargetCurrency = "Golden Shell"
 local LastInventory  = nil
