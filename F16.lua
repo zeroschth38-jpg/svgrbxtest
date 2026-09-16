@@ -29,14 +29,14 @@ local RootPart
 local currentTarget = 1
 local Enabled        = true
 
-local Equipped      = false
+local Equipped       = false
 local AttackInterval = 0.5
-local LastAttack    = 0
+local LastAttack     = 0
 local TargetCurrency = "Golden Shell"
 local LastInventory  = nil
 local EventCurrency  = 0
 
-local VERSION = "v0.35"
+local VERSION = "v0.42"
 
 local TargetPlaceID  = 11987539001
 local MAX_SERVER_AGE = 8 * 60 * 60
@@ -47,10 +47,12 @@ local REACH_DISTANCE        = 5
 local GOBLIN_REACH_DISTANCE = 7
 local JUMP_HEIGHT           = 3
 local BLOCK_COOLDOWN        = 3
+local DEATH_COUNT           = 0
 
 --// Retreat
-local RETREAT_DISTANCE = 30
-local RETREAT_DIRECTIONS = 16
+local RETREAT_DISTANCE      = 30
+local RETREAT_DIRECTIONS    = 16
+local WATER_SAMPLE_DISTANCE = 4
 
 local ClosestTarget = nil
 
@@ -85,6 +87,7 @@ Player.CharacterAdded:Connect(function()
 		Equipped = false
 	end)
 
+	DEATH_COUNT += 1
 	updateCharacter()
 end)
 
@@ -422,6 +425,56 @@ local function promptBlockPlayer(plr)
 	end)
 end
 
+--// Water Check
+local function IsWaterAtPosition(Position)
+	if not Position then
+		return false
+	end
+
+	local Origin = Position + Vector3.new(0, 5, 0)
+	local Direction = Vector3.new(0, -15, 0)
+
+	local RaycastParams = RaycastParams.new()
+	RaycastParams.FilterType = Enum.RaycastFilterType.Exclude
+	RaycastParams.FilterDescendantsInstances = {
+		Character,
+	}
+
+	local Result = workspace:Raycast(
+		Origin,
+		Direction,
+		RaycastParams
+	)
+
+	return Result and Result.Material == Enum.Material.Water
+end
+
+local function IsPathThroughWater(TargetPosition)
+	if not RootPart then
+		return true
+	end
+
+	local Origin = RootPart.Position
+	local Offset = TargetPosition - Origin
+	local Distance = Offset.Magnitude
+
+	if Distance <= 0 then
+		return IsWaterAtPosition(TargetPosition)
+	end
+
+	local Direction = Offset.Unit
+
+	for DistanceTravelled = 0, Distance, WATER_SAMPLE_DISTANCE do
+		local Position = Origin + Direction * DistanceTravelled
+
+		if IsWaterAtPosition(Position) then
+			return true
+		end
+	end
+
+	return IsWaterAtPosition(TargetPosition)
+end
+
 --// Line Of Sight
 local function CanSeeGoblin(Goblin)
 	if not RootPart or not Goblin then
@@ -490,6 +543,11 @@ local function GetClosestGoblin()
 			continue
 		end
 
+		--// Ignore Goblins standing in water
+		if IsWaterAtPosition(MobRoot.Position) then
+			continue
+		end
+
 		local Distance = (MobRoot.Position - RootPart.Position).Magnitude
 
 		if Distance < ClosestDistance and CanSeeGoblin(mob) then
@@ -503,9 +561,19 @@ local function GetClosestGoblin()
 	return ClosestMob
 end
 
---// Retreat Obstacle Check
+--// Retreat Obstacle + Water Check
 local function IsPathClear(TargetPosition)
 	if not RootPart then
+		return false
+	end
+
+	--// Do not retreat into water
+	if IsWaterAtPosition(TargetPosition) then
+		return false
+	end
+
+	--// Do not cross water while retreating
+	if IsPathThroughWater(TargetPosition) then
 		return false
 	end
 
@@ -653,10 +721,22 @@ local function MoveToGoblin(Goblin)
 		return
 	end
 
+	--// Goblin entered water
+	if IsWaterAtPosition(MobRoot.Position) then
+		ClosestTarget = nil
+		return
+	end
+
 	local TargetPosition = MobRoot.Position
 
 	if (RootPart.Position - TargetPosition).Magnitude <= GOBLIN_REACH_DISTANCE then
 		Humanoid:Move(Vector3.zero)
+		return
+	end
+
+	--// Do not walk through water
+	if IsPathThroughWater(TargetPosition) then
+		ClosestTarget = nil
 		return
 	end
 
@@ -687,7 +767,7 @@ RunService.Heartbeat:Connect(function()
 
 	updateServerAge()
 	updateEventCurrency()
-	WalkSpeedLabel.Text = "WalkSpeed   " .. Humanoid.WalkSpeed
+	WalkSpeedLabel.Text = "WalkSpeed   " .. Humanoid.WalkSpeed .. " | Death   " .. DEATH_COUNT
 
 	if not Enabled then
 		Humanoid:Move(Vector3.zero)
@@ -784,6 +864,7 @@ RunService.Heartbeat:Connect(function()
 			or GoblinHumanoid.Health <= 0
 			or not GoblinRoot:IsDescendantOf(workspace)
 			or not CanSeeGoblin(ClosestTarget)
+			or IsWaterAtPosition(GoblinRoot.Position)
 		then
 			ClosestTarget = GetClosestGoblin()
 		end
@@ -816,6 +897,7 @@ RunService.Heartbeat:Connect(function()
 					task.delay(0.5, function()
 						InputBindableFunction:Invoke("EquipButton", Enum.UserInputState.Begin)
 					end)
+
 					Equipped = true
 				end
 
