@@ -25,7 +25,7 @@ local Targets = {
 	Vector3.new(-1792, 175, 2769),
 }
 
-local VERSION = "v0.65"
+local VERSION = "v0.66"
 
 --// Farm Area
 local FARM_CENTER = Vector3.new(-1715, 173, 2798)
@@ -53,12 +53,13 @@ local TargetPlaceID  = 11987539001
 local MAX_SERVER_AGE = 8 * 60 * 60
 
 --// Combat
-local TARGET_ENTITY_NAME    = "Goblin"
-local REACH_DISTANCE        = 5
-local GOBLIN_REACH_DISTANCE = 7
-local JUMP_HEIGHT           = 3
-local BLOCK_COOLDOWN        = 3
-local DEATH_COUNT           = 0
+local TARGET_ENTITY_NAME     = "Goblin"
+local REACH_DISTANCE         = 5
+local GOBLIN_REACH_DISTANCE  = 7
+local GOBLIN_OFFSET_DISTANCE = 4
+local JUMP_HEIGHT            = 3
+local BLOCK_COOLDOWN         = 3
+local DEATH_COUNT            = 0
 
 --// Retreat
 local RETREAT_DISTANCE   = 30
@@ -713,7 +714,11 @@ local function GetLivingGoblins()
 
 		local Entity = Config:FindFirstChild("Entity")
 
-		if not Entity or Entity.Value ~= TARGET_ENTITY_NAME then
+		if not Entity then
+			continue
+		end
+
+		if Entity.Value ~= "Goblin" and Entity.Value ~= "Leader Goblin" then
 			continue
 		end
 
@@ -847,15 +852,25 @@ local function MoveToGoblin(Goblin)
 		return
 	end
 
-	local TargetPosition = MobRoot.Position
-
 	--// Target outside farm area / deadzone
-	if not IsInsideFarmArea(TargetPosition) then
+	if not IsInsideFarmArea(MobRoot.Position) then
 		ClosestTarget = nil
 		return
 	end
 
-	if (RootPart.Position - TargetPosition).Magnitude <= GOBLIN_REACH_DISTANCE then
+	--// Offset target position away from Goblin
+	local Direction = RootPart.Position - MobRoot.Position
+
+	if Direction.Magnitude > 0 then
+		Direction = Direction.Unit
+	else
+		Direction = -MobRoot.CFrame.LookVector
+	end
+
+	local TargetPosition = MobRoot.Position + Direction * GOBLIN_OFFSET_DISTANCE
+
+	--// Already close enough
+	if (RootPart.Position - TargetPosition).Magnitude <= 2 then
 		Humanoid:Move(Vector3.zero)
 		return
 	end
