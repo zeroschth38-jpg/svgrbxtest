@@ -31,7 +31,7 @@ local FARM_RADIUS = 200
 
 --// Farm Deadzone
 local FARM_DEADZONE_CENTER = Vector3.new(-1681, 173, 2821)
-local FARM_DEADZONE_RADIUS = 10
+local FARM_DEADZONE_RADIUS = 15
 
 local Character
 local Humanoid
