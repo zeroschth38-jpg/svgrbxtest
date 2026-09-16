@@ -767,6 +767,9 @@ RunService.Heartbeat:Connect(function()
 				end
 			end
 		end
+		if Humanoid.Health <= Humanoid.MaxHealth * 0.35 then
+			InputBindableFunction:Invoke("ConsumeButton", Enum.UserInputState.Begin)
+		end
 	end
 
 
