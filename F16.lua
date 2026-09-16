@@ -25,7 +25,7 @@ local Targets = {
 	Vector3.new(-1792, 175, 2769),
 }
 
-local VERSION = "v0.66"
+local VERSION = "v0.67"
 
 --// Farm Area
 local FARM_CENTER = Vector3.new(-1715, 173, 2798)
@@ -980,6 +980,8 @@ RunService.Heartbeat:Connect(function()
 		end
 	end
 
+	Humanoid.WalkSpeed = 42
+
 	--// Server Age
 	if workspace.DistributedGameTime >= MAX_SERVER_AGE then
 		TeleportToPlace()
@@ -1085,6 +1087,4 @@ RunService.Heartbeat:Connect(function()
 			InputBindableFunction:Invoke("InteractButton", Enum.UserInputState.Begin)
 		end
 	end
-
-	Humanoid.WalkSpeed = 42
 end)
