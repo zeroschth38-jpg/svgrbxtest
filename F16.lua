@@ -39,7 +39,7 @@ local TargetCurrency = "Golden Shell"
 local LastInventory  = nil
 local EventCurrency  = 0
 
-local VERSION = "v0.55"
+local VERSION = "v0.56"
 
 local TargetPlaceID  = 11987539001
 local MAX_SERVER_AGE = 8 * 60 * 60
@@ -789,7 +789,7 @@ RunService.Heartbeat:Connect(function()
 
 	updateServerAge()
 	updateEventCurrency()
-	WalkSpeedLabel.Text = "WalkSpeed   " .. Humanoid.WalkSpeed .. " | Death   " .. DEATH_COUNT
+	WalkSpeedLabel.Text = "WalkSpeed   " .. Humanoid.WalkSpeed .. " | Death   " .. DEATH_COUNT .. " | Waypoint   " .. currentTarget .. "/" .. #Targets
 
 	if not Enabled then
 		Humanoid:Move(Vector3.zero)
