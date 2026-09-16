@@ -39,7 +39,7 @@ local TargetCurrency = "Golden Shell"
 local LastInventory  = nil
 local EventCurrency  = 0
 
-local VERSION = "v0.56"
+local VERSION = "v0.57"
 
 local TargetPlaceID  = 11987539001
 local MAX_SERVER_AGE = 8 * 60 * 60
@@ -524,7 +524,7 @@ local function GetClosestGoblin()
 		return nil
 	end
 
-	local ClosestMob = nil
+	local ClosestMob      = nil
 	local ClosestDistance = math.huge
 
 	for _, mob in MobFolder:GetChildren() do
@@ -533,6 +533,7 @@ local function GetClosestGoblin()
 		end
 
 		local Config = mob:FindFirstChild("Config")
+
 		if not Config then
 			continue
 		end
@@ -556,20 +557,20 @@ local function GetClosestGoblin()
 
 		local Distance = (MobRoot.Position - RootPart.Position).Magnitude
 
+		--// Ignore Goblins that are in water
 		if IsWaterAtPosition(MobRoot.Position, mob) then
 			continue
 		end
-		
+
+		--// Ignore Goblins that require crossing water
 		if Distance < ClosestDistance
 			and CanSeeGoblin(mob)
 			and not IsPathThroughWater(MobRoot.Position)
 		then
 			ClosestDistance = Distance
-			ClosestMob = mob
+			ClosestMob      = mob
 		end
 	end
-
-	ClosestTarget = ClosestMob
 
 	return ClosestMob
 end
@@ -755,9 +756,21 @@ local function MoveToGoblin(Goblin)
 		return
 	end
 
+	--// Target entered water
+	if IsWaterAtPosition(MobRoot.Position, Goblin) then
+		ClosestTarget = nil
+		return
+	end
+
 	local TargetPosition = MobRoot.Position
 
 	if (RootPart.Position - TargetPosition).Magnitude <= GOBLIN_REACH_DISTANCE then
+		Humanoid:Move(Vector3.zero)
+		return
+	end
+
+	--// Never cross water to reach target
+	if IsPathThroughWater(TargetPosition) then
 		Humanoid:Move(Vector3.zero)
 		return
 	end
@@ -789,7 +802,7 @@ RunService.Heartbeat:Connect(function()
 
 	updateServerAge()
 	updateEventCurrency()
-	WalkSpeedLabel.Text = "WalkSpeed   " .. Humanoid.WalkSpeed .. " | Death   " .. DEATH_COUNT .. " | Waypoint   " .. currentTarget .. "/" .. #Targets
+	WalkSpeedLabel.Text = "WalkSpeed   " .. Humanoid.WalkSpeed .. " | Death   " .. DEATH_COUNT .. " | WP   " .. currentTarget .. "/" .. #Targets
 
 	if not Enabled then
 		Humanoid:Move(Vector3.zero)
@@ -876,22 +889,23 @@ RunService.Heartbeat:Connect(function()
 		if not ClosestTarget then
 			ClosestTarget = GetClosestGoblin()
 		end
-
+		
 		local GoblinHumanoid = ClosestTarget and ClosestTarget:FindFirstChildOfClass("Humanoid")
 		local GoblinRoot     = ClosestTarget and ClosestTarget:FindFirstChild("HumanoidRootPart")
-
-		if not ClosestTarget
-			or not GoblinHumanoid
-			or not GoblinRoot
-			or GoblinHumanoid.Health <= 0
-			or not GoblinRoot:IsDescendantOf(workspace)
-			or not CanSeeGoblin(ClosestTarget)
-			or IsWaterAtPosition(GoblinRoot.Position, ClosestTarget)
-			or IsPathThroughWater(GoblinRoot.Position)
+		
+		--// Only abandon target if the target itself becomes invalid
+		if ClosestTarget
+			and (
+				not GoblinHumanoid
+				or not GoblinRoot
+				or GoblinHumanoid.Health <= 0
+				or not GoblinRoot:IsDescendantOf(workspace)
+				or IsWaterAtPosition(GoblinRoot.Position, ClosestTarget)
+			)
 		then
 			ClosestTarget = GetClosestGoblin()
 		end
-
+		
 		if ClosestTarget then
 			MoveToGoblin(ClosestTarget)
 		end
