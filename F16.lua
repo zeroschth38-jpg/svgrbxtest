@@ -22,10 +22,6 @@ local Targets = {
 	Vector3.new(-1437, 176, 2494),
 }
 
-local REACH_DISTANCE = 5
-local JUMP_HEIGHT    = 3
-local BLOCK_COOLDOWN = 3
-
 local Character
 local Humanoid
 local RootPart
@@ -107,7 +103,7 @@ ScreenGui.IgnoreGuiInset = true
 ScreenGui.Parent = PlayerGui
 if game.PlaceId == TargetPlaceID then
 	ScreenGui.DisplayOrder = 1
-emd
+end
 
 local Panel = Instance.new("Frame")
 Panel.Name = "Panel"
