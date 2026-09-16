@@ -145,7 +145,7 @@ Title.Name = "Title"
 Title.LayoutOrder = 1
 Title.Size = UDim2.new(1, 0, 0.16, 0)
 Title.BackgroundTransparency = 1
-Title.Text = "AUTO FARMING (F16) v2.1"
+Title.Text = "AUTO FARMING (F16) v2.2"
 Title.TextColor3 = Color3.fromRGB(255, 255, 255)
 Title.TextSize = 18
 Title.Font = Enum.Font.GothamBold
@@ -700,20 +700,21 @@ RunService.Heartbeat:Connect(function()
 
 	--// Movement
 	local target = Targets[currentTarget]
-
+	
 	if currentTarget < #Targets then
 		if (RootPart.Position - target).Magnitude <= REACH_DISTANCE then
 			currentTarget += 1
-			target = Targets[currentTarget]
 		end
-	else
+	
+		target = Targets[currentTarget]
+	else --// Waypoint Reached
 		if not ClosestTarget then
-			GetClosestGoblin()
+			ClosestTarget = GetClosestGoblin()
 		end
-
+	
 		local GoblinHumanoid = ClosestTarget and ClosestTarget:FindFirstChildOfClass("Humanoid")
-		local GoblinRoot = ClosestTarget and ClosestTarget:FindFirstChild("HumanoidRootPart")
-
+		local GoblinRoot     = ClosestTarget and ClosestTarget:FindFirstChild("HumanoidRootPart")
+	
 		if not ClosestTarget
 			or not GoblinHumanoid
 			or not GoblinRoot
@@ -722,18 +723,18 @@ RunService.Heartbeat:Connect(function()
 		then
 			ClosestTarget = GetClosestGoblin()
 		end
-
+	
 		if ClosestTarget then
 			MoveToGoblin(ClosestTarget)
 		end
-
+	
 		target = nil
 	end
 
 	--// Jump
 	if currentTarget < #Targets then
 		local heightDifference = target.Y - RootPart.Position.Y
-
+	
 		if heightDifference >= JUMP_HEIGHT
 			and Humanoid.FloorMaterial ~= Enum.Material.Air
 			and Humanoid:GetState() ~= Enum.HumanoidStateType.Jumping
@@ -743,7 +744,7 @@ RunService.Heartbeat:Connect(function()
 		end
 	end
 
-	if currentTarget == #Targets - 1 then
+	if currentTarget == #Targets then
 		local InputBindableFunction = PlayerGui:FindFirstChild("InputBindableFunction", true) :: BindableFunction
 		if InputBindableFunction then
 			if not Equipped then
