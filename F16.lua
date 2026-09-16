@@ -842,5 +842,5 @@ RunService.Heartbeat:Connect(function()
 		end
 	end
 
-	Humanoid.WalkSpeed = 48
+	Humanoid.WalkSpeed = 40
 end)
