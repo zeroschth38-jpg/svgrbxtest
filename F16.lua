@@ -63,6 +63,9 @@ local LastMovePosition = nil
 local StuckSince = 0
 local AvoidDirection = 1
 
+local ConsumeCooldown = 30
+local LastConsumeStamp = 0
+
 local BlockCache = {}
 
 --// Character
@@ -740,7 +743,7 @@ RunService.Heartbeat:Connect(function()
 		end
 	end
 
-	if currentTarget == #Targets then
+	if currentTarget == #Targets - 1 then
 		local InputBindableFunction = PlayerGui:FindFirstChild("InputBindableFunction", true) :: BindableFunction
 		if InputBindableFunction then
 			if not Equipped then
@@ -766,7 +769,20 @@ RunService.Heartbeat:Connect(function()
 				end
 			end
 			if Humanoid.Health <= Humanoid.MaxHealth * 0.35 then
-				InputBindableFunction:Invoke("ConsumeButton", Enum.UserInputState.Begin)
+				local UseConsumable = Replicated:FindFirstChild("UseConsumable", true)
+				local PlayerStats = Player:FindFirstChild("PlayerStats")
+			
+				if UseConsumable and PlayerStats then
+					local LastConsumed = PlayerStats:FindFirstChild("LastConsumed")
+			
+					if LastConsumed
+						and LastConsumed.Value ~= ""
+						and os.clock() - LastConsumeStamp >= ConsumeCooldown
+					then
+						UseConsumable:InvokeServer(LastConsumed.Value)
+						LastConsumeStamp = os.clock()
+					end
+				end
 			end
 		end
 	else
