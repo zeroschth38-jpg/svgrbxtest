@@ -25,6 +25,8 @@ local Targets = {
 	Vector3.new(-1792, 175, 2769),
 }
 
+local VERSION = "v0.65"
+
 --// Farm Area
 local FARM_CENTER = Vector3.new(-1715, 173, 2798)
 local FARM_RADIUS = 200
@@ -46,8 +48,6 @@ local LastAttack     = 0
 local TargetCurrency = "Golden Shell"
 local LastInventory  = nil
 local EventCurrency  = 0
-
-local VERSION = "v0.63"
 
 local TargetPlaceID  = 11987539001
 local MAX_SERVER_AGE = 8 * 60 * 60
@@ -589,8 +589,10 @@ local function GetClosestGoblin()
 		return nil
 	end
 
-	local ClosestMob      = nil
-	local ClosestDistance = math.huge
+	local ClosestLeader         = nil
+	local ClosestLeaderDistance = math.huge
+	local ClosestGoblin         = nil
+	local ClosestGoblinDistance = math.huge
 
 	for _, mob in MobFolder:GetChildren() do
 		if not mob:IsA("Model") then
@@ -616,7 +618,11 @@ local function GetClosestGoblin()
 
 		local Entity = Config:FindFirstChild("Entity")
 
-		if not Entity or Entity.Value ~= TARGET_ENTITY_NAME then
+		if not Entity then
+			continue
+		end
+
+		if Entity.Value ~= "Goblin" and Entity.Value ~= "Leader Goblin" then
 			continue
 		end
 
@@ -632,16 +638,22 @@ local function GetClosestGoblin()
 		end
 
 		--// Ignore Goblins that require crossing water
-		if Distance < ClosestDistance
-			and CanSeeGoblin(mob)
-			and not IsPathThroughWater(MobRoot.Position)
-		then
-			ClosestDistance = Distance
-			ClosestMob      = mob
+		if not CanSeeGoblin(mob) or IsPathThroughWater(MobRoot.Position) then
+			continue
+		end
+
+		if Entity.Value == "Leader Goblin" then
+			if Distance < ClosestLeaderDistance then
+				ClosestLeaderDistance = Distance
+				ClosestLeader         = mob
+			end
+		elseif Distance < ClosestGoblinDistance then
+			ClosestGoblinDistance = Distance
+			ClosestGoblin         = mob
 		end
 	end
 
-	return ClosestMob
+	return ClosestLeader or ClosestGoblin
 end
 
 ---// Retreat Obstacle Check
