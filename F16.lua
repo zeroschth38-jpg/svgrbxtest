@@ -25,6 +25,10 @@ local Targets = {
 	Vector3.new(-1792, 175, 2769),
 }
 
+--// Farm Area
+local FARM_CENTER = Vector3.new(-1715, 173, 2798)
+local FARM_RADIUS = 100
+
 local Character
 local Humanoid
 local RootPart
@@ -39,7 +43,7 @@ local TargetCurrency = "Golden Shell"
 local LastInventory  = nil
 local EventCurrency  = 0
 
-local VERSION = "v0.58"
+local VERSION = "v0.6"
 
 local TargetPlaceID  = 11987539001
 local MAX_SERVER_AGE = 8 * 60 * 60
@@ -428,6 +432,17 @@ local function promptBlockPlayer(plr)
 	end)
 end
 
+--// Farm Area Check
+local function IsInsideFarmArea(Position)
+	if not Position then
+		return false
+	end
+
+	local Offset = Position - FARM_CENTER
+
+	return Vector3.new(Offset.X, 0, Offset.Z).Magnitude <= FARM_RADIUS
+end
+
 --// Water Check
 local WATER_SAMPLE_DISTANCE = 4
 
@@ -556,6 +571,10 @@ local function GetClosestGoblin()
 		end
 
 		local Distance = (MobRoot.Position - RootPart.Position).Magnitude
+
+		if not IsInsideFarmArea(MobRoot.Position) then
+			continue
+		end
 
 		--// Ignore Goblins that are in water
 		if IsWaterAtPosition(MobRoot.Position, mob) then
@@ -715,7 +734,11 @@ local function GetRetreatPosition()
 		)
 
 		local TargetPosition = RootPart.Position + Direction * RETREAT_DISTANCE
-
+		
+		if not IsInsideFarmArea(TargetPosition) then
+			continue
+		end
+		
 		if not IsPathClear(TargetPosition) then
 			continue
 		end
@@ -763,6 +786,10 @@ local function MoveToGoblin(Goblin)
 	end
 
 	local TargetPosition = MobRoot.Position
+	if not IsInsideFarmArea(TargetPosition) then
+		ClosestTarget = nil
+		return
+	end
 
 	if (RootPart.Position - TargetPosition).Magnitude <= GOBLIN_REACH_DISTANCE then
 		Humanoid:Move(Vector3.zero)
@@ -900,6 +927,7 @@ RunService.Heartbeat:Connect(function()
 				or not GoblinRoot
 				or GoblinHumanoid.Health <= 0
 				or not GoblinRoot:IsDescendantOf(workspace)
+				or not IsInsideFarmArea(GoblinRoot.Position)
 				or IsWaterAtPosition(GoblinRoot.Position, ClosestTarget)
 			)
 		then
