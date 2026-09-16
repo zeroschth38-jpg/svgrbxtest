@@ -772,8 +772,8 @@ RunService.Heartbeat:Connect(function()
 						and LastConsumed.Value ~= ""
 						and os.clock() - LastConsumeStamp >= ConsumeCooldown
 					then
-						UseConsumable:InvokeServer(LastConsumed.Value)
 						LastConsumeStamp = os.clock()
+						UseConsumable:InvokeServer(LastConsumed.Value)
 					end
 				end
 			end
