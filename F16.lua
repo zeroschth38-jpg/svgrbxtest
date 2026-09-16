@@ -25,7 +25,7 @@ local Targets = {
 	Vector3.new(-1792, 175, 2769),
 }
 
-local VERSION = "v0.69"
+local VERSION = "v0.6969"
 
 --// Farm Area
 local FARM_CENTER = Vector3.new(-1715, 173, 2798)
@@ -56,7 +56,7 @@ local MAX_SERVER_AGE = 8 * 60 * 60
 local TARGET_ENTITY_NAME     = "Goblin"
 local REACH_DISTANCE         = 5
 local GOBLIN_REACH_DISTANCE  = 7
-local GOBLIN_OFFSET_DISTANCE = 6.5
+-- local GOBLIN_OFFSET_DISTANCE = 6.5
 local JUMP_HEIGHT            = 3
 local BLOCK_COOLDOWN         = 3
 local DEATH_COUNT            = 0
@@ -657,7 +657,6 @@ local function GetClosestGoblin()
 	return ClosestLeader or ClosestGoblin
 end
 
----// Retreat Obstacle Check
 local function IsPathClear(TargetPosition)
 	if not RootPart then
 		return false
@@ -671,6 +670,10 @@ local function IsPathClear(TargetPosition)
 		return false
 	end
 
+	if IsPathThroughDeadzone(TargetPosition) then
+		return false
+	end
+
 	local Origin    = RootPart.Position
 	local Direction = TargetPosition - Origin
 
@@ -680,11 +683,7 @@ local function IsPathClear(TargetPosition)
 		Character,
 	}
 
-	local Result = workspace:Raycast(
-		Origin,
-		Direction,
-		RaycastParams
-	)
+	local Result = workspace:Raycast(Origin, Direction, RaycastParams)
 
 	return Result == nil
 end
@@ -852,25 +851,16 @@ local function MoveToGoblin(Goblin)
 		return
 	end
 
+	local TargetPosition = MobRoot.Position
+
 	--// Target outside farm area / deadzone
-	if not IsInsideFarmArea(MobRoot.Position) then
+	if not IsInsideFarmArea(TargetPosition) then
 		ClosestTarget = nil
 		return
 	end
 
-	--// Offset target position away from Goblin
-	local Direction = RootPart.Position - MobRoot.Position
-
-	if Direction.Magnitude > 0 then
-		Direction = Direction.Unit
-	else
-		Direction = -MobRoot.CFrame.LookVector
-	end
-
-	local TargetPosition = MobRoot.Position + Direction * GOBLIN_OFFSET_DISTANCE
-
 	--// Already close enough
-	if (RootPart.Position - TargetPosition).Magnitude <= 2 then
+	if (RootPart.Position - TargetPosition).Magnitude <= GOBLIN_REACH_DISTANCE then
 		Humanoid:Move(Vector3.zero)
 		return
 	end
