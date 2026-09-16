@@ -36,7 +36,7 @@ local TargetCurrency = "Golden Shell"
 local LastInventory  = nil
 local EventCurrency  = 0
 
-local VERSION = "v0.46"
+local VERSION = "v0.47"
 
 local TargetPlaceID  = 11987539001
 local MAX_SERVER_AGE = 8 * 60 * 60
@@ -82,6 +82,7 @@ Player.CharacterAdded:Connect(function()
 	currentTarget = 1
 	ClosestTarget = nil
 
+	Equipped = false
 	task.delay(0.5, function()
 		Equipped = false
 	end)
@@ -899,6 +900,7 @@ RunService.Heartbeat:Connect(function()
 				if not Equipped then
 					Equipped = true
 					InputBindableFunction:Invoke("EquipButton", Enum.UserInputState.Begin)
+					warn("SHOULD EQUIP SWORD NOW!")
 				end
 
 				local MobHumanoid = ClosestTarget:FindFirstChildOfClass("Humanoid")
