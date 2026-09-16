@@ -778,5 +778,7 @@ RunService.Heartbeat:Connect(function()
 
 
 	Humanoid.WalkSpeed = 40
-	Humanoid:MoveTo(target)
+	if target then
+		Humanoid:MoveTo(target)
+	end
 end)
