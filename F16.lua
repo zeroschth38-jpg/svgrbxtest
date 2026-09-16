@@ -145,7 +145,7 @@ Title.Name = "Title"
 Title.LayoutOrder = 1
 Title.Size = UDim2.new(1, 0, 0.16, 0)
 Title.BackgroundTransparency = 1
-Title.Text = "AUTO FARMING (F16) v2.2"
+Title.Text = "AUTO FARMING (F16) v2.3"
 Title.TextColor3 = Color3.fromRGB(255, 255, 255)
 Title.TextSize = 18
 Title.Font = Enum.Font.GothamBold
@@ -794,7 +794,7 @@ RunService.Heartbeat:Connect(function()
 	end
 
 
-	Humanoid.WalkSpeed = 40
+	Humanoid.WalkSpeed = 48
 	if target then
 		Humanoid:MoveTo(target)
 	end
