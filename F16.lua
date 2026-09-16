@@ -813,7 +813,9 @@ RunService.Heartbeat:Connect(function()
 		if InputBindableFunction then
 			if ClosestTarget then
 				if not Equipped then
-					InputBindableFunction:Invoke("EquipButton", Enum.UserInputState.Begin)
+					task.delay(0.5, function()
+						InputBindableFunction:Invoke("EquipButton", Enum.UserInputState.Begin)
+					end)
 					Equipped = true
 				end
 
