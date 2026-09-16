@@ -36,7 +36,7 @@ local TargetCurrency  = "Golden Shell"
 local LastInventory   = nil
 local EventCurrency    = 0
 
-local VERSION = "v0.2"
+local VERSION = "v0.34"
 
 local TargetPlaceID = 11987539001
 local MAX_SERVER_AGE = 8 * 60 * 60
@@ -426,6 +426,34 @@ local function promptBlockPlayer(plr)
 	end)
 end
 
+local function CanSeeGoblin(Goblin)
+	if not RootPart or not Goblin then
+		return false
+	end
+
+	local MobRoot = Goblin:FindFirstChild("HumanoidRootPart")
+	if not MobRoot then
+		return false
+	end
+
+	local Origin = RootPart.Position
+	local Direction = MobRoot.Position - Origin
+
+	local RaycastParams = RaycastParams.new()
+	RaycastParams.FilterType = Enum.RaycastFilterType.Exclude
+	RaycastParams.FilterDescendantsInstances = {
+		Character,
+	}
+
+	local Result = workspace:Raycast(Origin, Direction, RaycastParams)
+
+	if not Result then
+		return true
+	end
+
+	return Result.Instance:IsDescendantOf(Goblin)
+end
+
 local function GetClosestGoblin()
 	local MobFolder = workspace:FindFirstChild("Mobs")
 
@@ -447,7 +475,7 @@ local function GetClosestGoblin()
 		end
 
 		local MobHumanoid = mob:FindFirstChildOfClass("Humanoid")
-		local MobRoot = mob:FindFirstChild("HumanoidRootPart")
+		local MobRoot     = mob:FindFirstChild("HumanoidRootPart")
 
 		if not MobHumanoid or not MobRoot then
 			continue
@@ -457,16 +485,14 @@ local function GetClosestGoblin()
 			continue
 		end
 
-		if not Config:FindFirstChild("Entity") then
-			continue
-		end
-		if Config.Entity.Value ~= TARGET_ENTITY_NAME then
+		local Entity = Config:FindFirstChild("Entity")
+		if not Entity or Entity.Value ~= TARGET_ENTITY_NAME then
 			continue
 		end
 
 		local Distance = (MobRoot.Position - RootPart.Position).Magnitude
 
-		if Distance < ClosestDistance then
+		if Distance < ClosestDistance and CanSeeGoblin(mob) then
 			ClosestDistance = Distance
 			ClosestMob = mob
 		end
@@ -475,123 +501,6 @@ local function GetClosestGoblin()
 	ClosestTarget = ClosestMob
 
 	return ClosestMob
-end
-
-local RaycastParams = RaycastParams.new()
-RaycastParams.FilterType = Enum.RaycastFilterType.Exclude
-
-local function GetAvoidanceDirection(TargetPosition)
-	if not RootPart then
-		return nil
-	end
-
-	RaycastParams.FilterDescendantsInstances = {
-		Character,
-		ClosestTarget
-	}
-
-	local Origin = RootPart.Position + Vector3.new(0, 2, 0)
-
-	local TargetDirection = TargetPosition - RootPart.Position
-	TargetDirection = Vector3.new(TargetDirection.X, 0, TargetDirection.Z)
-
-	if TargetDirection.Magnitude <= 0.01 then
-		return nil
-	end
-
-	TargetDirection = TargetDirection.Unit
-
-	local ForwardResult = workspace:Raycast(
-		Origin,
-		TargetDirection * OBSTACLE_DISTANCE,
-		RaycastParams
-	)
-
-	if not ForwardResult then
-		return TargetDirection
-	end
-
-	local Right = Vector3.new(-TargetDirection.Z, 0, TargetDirection.X)
-	local Left = -Right
-
-	local RightResult = workspace:Raycast(
-		Origin,
-		Right * SIDE_DISTANCE,
-		RaycastParams
-	)
-
-	local LeftResult = workspace:Raycast(
-		Origin,
-		Left * SIDE_DISTANCE,
-		RaycastParams
-	)
-
-	if not RightResult and not LeftResult then
-		if AvoidDirection > 0 then
-			return (TargetDirection + Right * 0.9).Unit
-		else
-			return (TargetDirection + Left * 0.9).Unit
-		end
-	end
-
-	if not RightResult then
-		AvoidDirection = 1
-		return (TargetDirection + Right * 0.9).Unit
-	end
-
-	if not LeftResult then
-		AvoidDirection = -1
-		return (TargetDirection + Left * 0.9).Unit
-	end
-
-	local RightDistance = SIDE_DISTANCE
-	local LeftDistance = SIDE_DISTANCE
-
-	if RightResult then
-		RightDistance = RightResult.Distance
-	end
-
-	if LeftResult then
-		LeftDistance = LeftResult.Distance
-	end
-
-	if RightDistance > LeftDistance then
-		AvoidDirection = 1
-		return Right
-	else
-		AvoidDirection = -1
-		return Left
-	end
-end
-
-local function CheckStuck()
-	if not RootPart then
-		return false
-	end
-
-	local CurrentPosition = RootPart.Position
-
-	if not LastMovePosition then
-		LastMovePosition = CurrentPosition
-		StuckSince = os.clock()
-		return false
-	end
-
-	local DistanceMoved = (CurrentPosition - LastMovePosition).Magnitude
-
-	if DistanceMoved < STUCK_DISTANCE then
-		if os.clock() - StuckSince >= STUCK_TIME then
-			AvoidDirection *= -1
-			StuckSince = os.clock()
-
-			return true
-		end
-	else
-		LastMovePosition = CurrentPosition
-		StuckSince = os.clock()
-	end
-
-	return false
 end
 
 local function MoveToGoblin(Goblin)
@@ -739,12 +648,12 @@ RunService.Heartbeat:Connect(function()
 	if currentTarget == #Targets then
 		local InputBindableFunction = PlayerGui:FindFirstChild("InputBindableFunction", true) :: BindableFunction
 		if InputBindableFunction then
-			if not Equipped then
-				InputBindableFunction:Invoke("EquipButton", Enum.UserInputState.Begin)
-				Equipped = true
-			end
 
 			if ClosestTarget then
+				if not Equipped then
+					InputBindableFunction:Invoke("EquipButton", Enum.UserInputState.Begin)
+					Equipped = true
+				end
 				local MobHumanoid = ClosestTarget:FindFirstChildOfClass("Humanoid")
 				local MobRoot = ClosestTarget:FindFirstChild("HumanoidRootPart")
 
