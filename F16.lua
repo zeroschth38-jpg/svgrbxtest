@@ -47,6 +47,7 @@ local TargetPlaceID = 11987539001
 local MAX_SERVER_AGE = 8 * 60 * 60
 
 --// Combat
+local TARGET_ENTITY_NAME   = "Goblin"
 local REACH_DISTANCE       = 5
 local GOBLIN_REACH_DISTANCE = 7
 local JUMP_HEIGHT          = 3
@@ -458,7 +459,7 @@ local function GetClosestGoblin()
 		if not Config:FindFirstChild("Entity") then
 			continue
 		end
-		if Config.Entity.Value == "Goblin" then
+		if Config.Entity.Value ~= TARGET_ENTITY_NAME then
 			continue
 		end
 
