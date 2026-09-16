@@ -36,7 +36,7 @@ local TargetCurrency = "Golden Shell"
 local LastInventory  = nil
 local EventCurrency  = 0
 
-local VERSION = "v0.44"
+local VERSION = "v0.46"
 
 local TargetPlaceID  = 11987539001
 local MAX_SERVER_AGE = 8 * 60 * 60
@@ -424,6 +424,64 @@ local function promptBlockPlayer(plr)
 	end)
 end
 
+--// Water Check
+local WATER_SAMPLE_DISTANCE = 4
+
+local function IsWaterAtPosition(Position, IgnoreModel)
+	if not Position then
+		return false
+	end
+
+	local FilterInstances = {
+		Character,
+	}
+
+	if IgnoreModel then
+		table.insert(FilterInstances, IgnoreModel)
+	end
+
+	local RaycastParams = RaycastParams.new()
+	RaycastParams.FilterType = Enum.RaycastFilterType.Exclude
+	RaycastParams.FilterDescendantsInstances = FilterInstances
+
+	local Origin    = Position + Vector3.new(0, 10, 0)
+	local Direction = Vector3.new(0, -30, 0)
+
+	local Result = workspace:Raycast(
+		Origin,
+		Direction,
+		RaycastParams
+	)
+
+	return Result and Result.Material == Enum.Material.Water
+end
+
+local function IsPathThroughWater(TargetPosition)
+	if not RootPart then
+		return true
+	end
+
+	local Origin = RootPart.Position
+	local Offset = TargetPosition - Origin
+	local Distance = Offset.Magnitude
+
+	if Distance <= 0 then
+		return IsWaterAtPosition(TargetPosition)
+	end
+
+	local Direction = Offset.Unit
+
+	for DistanceTravelled = 0, Distance, WATER_SAMPLE_DISTANCE do
+		local Position = Origin + Direction * DistanceTravelled
+
+		if IsWaterAtPosition(Position) then
+			return true
+		end
+	end
+
+	return IsWaterAtPosition(TargetPosition)
+end
+
 --// Line Of Sight
 local function CanSeeGoblin(Goblin)
 	if not RootPart or not Goblin then
@@ -494,7 +552,14 @@ local function GetClosestGoblin()
 
 		local Distance = (MobRoot.Position - RootPart.Position).Magnitude
 
-		if Distance < ClosestDistance and CanSeeGoblin(mob) then
+		if IsWaterAtPosition(MobRoot.Position, mob) then
+			continue
+		end
+		
+		if Distance < ClosestDistance
+			and CanSeeGoblin(mob)
+			and not IsPathThroughWater(MobRoot.Position)
+		then
 			ClosestDistance = Distance
 			ClosestMob = mob
 		end
@@ -505,9 +570,17 @@ local function GetClosestGoblin()
 	return ClosestMob
 end
 
---// Retreat Obstacle Check
+---// Retreat Obstacle Check
 local function IsPathClear(TargetPosition)
 	if not RootPart then
+		return false
+	end
+
+	if IsWaterAtPosition(TargetPosition) then
+		return false
+	end
+
+	if IsPathThroughWater(TargetPosition) then
 		return false
 	end
 
@@ -786,6 +859,8 @@ RunService.Heartbeat:Connect(function()
 			or GoblinHumanoid.Health <= 0
 			or not GoblinRoot:IsDescendantOf(workspace)
 			or not CanSeeGoblin(ClosestTarget)
+			or IsWaterAtPosition(GoblinRoot.Position, ClosestTarget)
+			or IsPathThroughWater(GoblinRoot.Position)
 		then
 			ClosestTarget = GetClosestGoblin()
 		end
