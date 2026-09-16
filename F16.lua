@@ -924,7 +924,7 @@ RunService.Heartbeat:Connect(function()
 			if ClosestTarget then
 				local Sword = Character:FindFirstChild("Sword")
 				if Sword then
-					local MainWeld = Sword:FindFirstChild("MainWeld")
+					local MainWeld = Sword:FindFirstChild("MainWeld", true)
 					if not Equipped or (MainWeld.Part1 and MainWeld.Part1.Name == "UpperTorso") then
 						Equipped = true
 						InputBindableFunction:Invoke("EquipButton", Enum.UserInputState.Begin)
