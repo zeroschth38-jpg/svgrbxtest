@@ -20,8 +20,8 @@ local Targets = {
 	Vector3.new(-1364, 172, 1962),
 	Vector3.new(-1363, 174, 2068),
 	Vector3.new(-1437, 176, 2494),
-	Vector3.new(-1402, 175, 2524),
-	-- Vector3.new(-1654, 174, 2619),
+	-- Vector3.new(-1402, 175, 2524),
+	Vector3.new(-1654, 174, 2619),
 	Vector3.new(-1792, 175, 2769),
 }
 
@@ -39,7 +39,7 @@ local TargetCurrency = "Golden Shell"
 local LastInventory  = nil
 local EventCurrency  = 0
 
-local VERSION = "v0.57"
+local VERSION = "v0.58"
 
 local TargetPlaceID  = 11987539001
 local MAX_SERVER_AGE = 8 * 60 * 60
