@@ -22,7 +22,6 @@ local Targets = {
 	Vector3.new(-1437, 176, 2494),
 	Vector3.new(-1402, 175, 2524),
 	Vector3.new(-1654, 174, 2619),
-	Vector3.new(-1792, 175, 2769),
 }
 
 local Character
@@ -39,7 +38,7 @@ local TargetCurrency = "Golden Shell"
 local LastInventory  = nil
 local EventCurrency  = 0
 
-local VERSION = "v0.51"
+local VERSION = "v0.53"
 
 local TargetPlaceID  = 11987539001
 local MAX_SERVER_AGE = 8 * 60 * 60
@@ -923,24 +922,29 @@ RunService.Heartbeat:Connect(function()
 
 		if InputBindableFunction then
 			if ClosestTarget then
-				if not Equipped then
-					Equipped = true
-					InputBindableFunction:Invoke("EquipButton", Enum.UserInputState.Begin)
-					warn("SHOULD EQUIP SWORD NOW!")
-				end
-
-				local MobHumanoid = ClosestTarget:FindFirstChildOfClass("Humanoid")
-				local MobRoot     = ClosestTarget:FindFirstChild("HumanoidRootPart")
-
-				if MobHumanoid and MobRoot and MobHumanoid.Health > 0 then
-					local Distance = (RootPart.Position - MobRoot.Position).Magnitude
-
-					if Distance <= GOBLIN_REACH_DISTANCE then
-						if os.clock() - LastAttack >= AttackInterval then
-							InputBindableFunction:Invoke("AttackButton", Enum.UserInputState.Begin)
-							InputBindableFunction:Invoke("SkillButton", Enum.UserInputState.Begin)
-
-							LastAttack = os.clock()
+				local Sword = Character:FindFirstChild("Sword")
+				if Sword then
+					local MainWeld = Sword:FindFirstChild("MainWeld")
+					if not Equipped or (MainWeld.Part1 and MainWeld.Part1.Name == "UpperTorso") then
+						Equipped = true
+						InputBindableFunction:Invoke("EquipButton", Enum.UserInputState.Begin)
+						warn("SHOULD EQUIP SWORD NOW!")
+						return
+					end
+	
+					local MobHumanoid = ClosestTarget:FindFirstChildOfClass("Humanoid")
+					local MobRoot     = ClosestTarget:FindFirstChild("HumanoidRootPart")
+	
+					if MobHumanoid and MobRoot and MobHumanoid.Health > 0 then
+						local Distance = (RootPart.Position - MobRoot.Position).Magnitude
+	
+						if Distance <= GOBLIN_REACH_DISTANCE then
+							if os.clock() - LastAttack >= AttackInterval then
+								InputBindableFunction:Invoke("AttackButton", Enum.UserInputState.Begin)
+								InputBindableFunction:Invoke("SkillButton", Enum.UserInputState.Begin)
+	
+								LastAttack = os.clock()
+							end
 						end
 					end
 				end
