@@ -22,6 +22,7 @@ local Targets = {
 	Vector3.new(-1437, 176, 2494),
 	Vector3.new(-1402, 175, 2524),
 	Vector3.new(-1654, 174, 2619),
+	Vector3.new(-1792, 175, 2769),
 }
 
 local Character
