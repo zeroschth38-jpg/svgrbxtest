@@ -31,7 +31,7 @@ local FARM_RADIUS = 200
 
 --// Farm Deadzone
 local FARM_DEADZONE_CENTER = Vector3.new(-1681, 173, 2821)
-local FARM_DEADZONE_RADIUS = 5
+local FARM_DEADZONE_RADIUS = 10
 
 local Character
 local Humanoid
@@ -47,7 +47,7 @@ local TargetCurrency = "Golden Shell"
 local LastInventory  = nil
 local EventCurrency  = 0
 
-local VERSION = "v0.61"
+local VERSION = "v0.62"
 
 local TargetPlaceID  = 11987539001
 local MAX_SERVER_AGE = 8 * 60 * 60
