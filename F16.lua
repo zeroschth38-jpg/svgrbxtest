@@ -616,13 +616,13 @@ local function MoveToGoblin(Goblin)
 		return
 	end
 
-	local MoveDirection = GetAvoidanceDirection(TargetPosition)
+	-- local MoveDirection = GetAvoidanceDirection(TargetPosition)
 
-	if not MoveDirection then
-		return
-	end
+	-- if not MoveDirection then
+	-- 	return
+	-- end
 
-	CheckStuck()
+	-- CheckStuck()
 
 	Humanoid:Move(MoveDirection, false)
 end
@@ -726,6 +726,7 @@ RunService.Heartbeat:Connect(function()
 	
 		if ClosestTarget then
 			MoveToGoblin(ClosestTarget)
+			print("Found Closest Target:", ClosestTarget, #Targets, currentTarget)
 		end
 	
 		target = nil
