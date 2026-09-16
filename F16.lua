@@ -40,8 +40,7 @@ local TargetCurrency  = "Golden Shell"
 local LastInventory   = nil
 local EventCurrency    = 0
 
-local TotalBlock = 0
-
+local VERSION = "v0.1"
 
 local TargetPlaceID = 11987539001
 local MAX_SERVER_AGE = 8 * 60 * 60
@@ -145,7 +144,7 @@ Title.Name = "Title"
 Title.LayoutOrder = 1
 Title.Size = UDim2.new(1, 0, 0.16, 0)
 Title.BackgroundTransparency = 1
-Title.Text = "AUTO FARMING (F16) v2.3"
+Title.Text = "AUTO FARMING (F16) "..VERSION
 Title.TextColor3 = Color3.fromRGB(255, 255, 255)
 Title.TextSize = 18
 Title.Font = Enum.Font.GothamBold
