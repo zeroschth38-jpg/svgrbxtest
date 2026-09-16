@@ -215,6 +215,38 @@ ServerAgeLabel.TextXAlignment = Enum.TextXAlignment.Left
 ServerAgeLabel.TextTruncate = Enum.TextTruncate.AtEnd
 ServerAgeLabel.Parent = Panel
 
+--// GUI Toggle
+local GUIToggle = Instance.new("TextButton")
+GUIToggle.Name = "GUIToggle"
+GUIToggle.Size = UDim2.new(0, 100, 0, 32)
+GUIToggle.Position = UDim2.new(1, -110, 0, 10)
+GUIToggle.BackgroundColor3 = Color3.fromRGB(42, 42, 48)
+GUIToggle.BorderSizePixel = 0
+GUIToggle.Text = "HIDE GUI"
+GUIToggle.TextColor3 = Color3.fromRGB(255, 255, 255)
+GUIToggle.TextSize = 12
+GUIToggle.Font = Enum.Font.GothamBold
+GUIToggle.AutoButtonColor = true
+GUIToggle.Parent = ScreenGui
+
+local GUIToggleCorner = Instance.new("UICorner")
+GUIToggleCorner.CornerRadius = UDim.new(0, 6)
+GUIToggleCorner.Parent = GUIToggle
+
+local GUIVisible = true
+
+GUIToggle.Activated:Connect(function()
+	GUIVisible = not GUIVisible
+
+	Panel.Visible = GUIVisible
+
+	if GUIVisible then
+		GUIToggle.Text = "HIDE GUI"
+	else
+		GUIToggle.Text = "SHOW GUI"
+	end
+end)
+
 --// UI Update
 local function updateButton()
 	if Enabled then
