@@ -738,12 +738,10 @@ RunService.Heartbeat:Connect(function()
 			Humanoid.Jump = true
 			Humanoid:ChangeState(Enum.HumanoidStateType.Jumping)
 		end
-    InputBindableFunction:Invoke("InteractButton", Enum.UserInputState.Begin)
 	end
 
 	if currentTarget == #Targets then
 		local InputBindableFunction = PlayerGui:FindFirstChild("InputBindableFunction", true) :: BindableFunction
-
 		if InputBindableFunction then
 			if not Equipped then
 				InputBindableFunction:Invoke("EquipButton", Enum.UserInputState.Begin)
@@ -767,9 +765,14 @@ RunService.Heartbeat:Connect(function()
 					end
 				end
 			end
+			if Humanoid.Health <= Humanoid.MaxHealth * 0.35 then
+				InputBindableFunction:Invoke("ConsumeButton", Enum.UserInputState.Begin)
+			end
 		end
-		if Humanoid.Health <= Humanoid.MaxHealth * 0.35 then
-			InputBindableFunction:Invoke("ConsumeButton", Enum.UserInputState.Begin)
+	else
+		local InputBindableFunction = PlayerGui:FindFirstChild("InputBindableFunction", true) :: BindableFunction
+		if InputBindableFunction then
+			InputBindableFunction:Invoke("InteractButton", Enum.UserInputState.Begin)
 		end
 	end
 
