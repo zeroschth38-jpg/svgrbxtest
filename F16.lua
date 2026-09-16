@@ -40,7 +40,7 @@ local TargetCurrency  = "Golden Shell"
 local LastInventory   = nil
 local EventCurrency    = 0
 
-local VERSION = "v0.1"
+local VERSION = "v0.2"
 
 local TargetPlaceID = 11987539001
 local MAX_SERVER_AGE = 8 * 60 * 60
@@ -105,6 +105,9 @@ ScreenGui.Name = "AutoFarmUI"
 ScreenGui.ResetOnSpawn = false
 ScreenGui.IgnoreGuiInset = true
 ScreenGui.Parent = PlayerGui
+if game.PlaceId == TargetPlaceID then
+	ScreenGui.DisplayOrder = 1
+emd
 
 local Panel = Instance.new("Frame")
 Panel.Name = "Panel"
@@ -695,10 +698,13 @@ RunService.Heartbeat:Connect(function()
 	if currentTarget < #Targets then
 		if (RootPart.Position - target).Magnitude <= REACH_DISTANCE then
 			currentTarget += 1
+			target = Targets[currentTarget]
 		end
 	
-		target = Targets[currentTarget]
-	else --// Waypoint Reached
+		-- วิ่งตาม Waypoint
+		Humanoid:MoveTo(target)
+	else
+		--// Waypoint Reached
 		if not ClosestTarget then
 			ClosestTarget = GetClosestGoblin()
 		end
@@ -719,8 +725,6 @@ RunService.Heartbeat:Connect(function()
 			MoveToGoblin(ClosestTarget)
 			print("Found Closest Target:", ClosestTarget, #Targets, currentTarget)
 		end
-	
-		target = nil
 	end
 
 	--// Jump
@@ -787,7 +791,4 @@ RunService.Heartbeat:Connect(function()
 
 
 	Humanoid.WalkSpeed = 48
-	if target then
-		Humanoid:MoveTo(target)
-	end
 end)
