@@ -822,11 +822,8 @@ RunService.Heartbeat:Connect(function()
 		if InputBindableFunction then
 			if ClosestTarget then
 				if not Equipped then
-					task.delay(0.5, function()
-						InputBindableFunction:Invoke("EquipButton", Enum.UserInputState.Begin)
-					end)
-
 					Equipped = true
+					InputBindableFunction:Invoke("EquipButton", Enum.UserInputState.Begin)
 				end
 
 				local MobHumanoid = ClosestTarget:FindFirstChildOfClass("Humanoid")
