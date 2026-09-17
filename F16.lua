@@ -52,7 +52,7 @@ local TARGET_ENTITY_PRIORITY = {
 local ClosestTarget = nil
 
 local REACH_DISTANCE        = 5
-local GOBLIN_REACH_DISTANCE = 15
+local GOBLIN_REACH_DISTANCE = 7
 local JUMP_HEIGHT           = 3
 local BLOCK_COOLDOWN        = 3
 local DEATH_COUNT           = 0
