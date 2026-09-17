@@ -909,6 +909,7 @@ RunService.Heartbeat:Connect(function()
 	updateEventCurrency()
 
 	WalkSpeedLabel.Text = "WalkSpeed   " .. Humanoid.WalkSpeed .. " | Death   " .. DEATH_COUNT .. " | WP   " .. currentTarget .. "/" .. #Targets
+	Humanoid.WalkSpeed = 38
 
 	if not Enabled then
 		Humanoid:Move(Vector3.zero)
@@ -984,8 +985,6 @@ RunService.Heartbeat:Connect(function()
 			end
 		end
 	end
-
-	Humanoid.WalkSpeed = 42
 
 	--// Server Age
 	if workspace.DistributedGameTime >= MAX_SERVER_AGE then
