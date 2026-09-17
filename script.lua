@@ -440,7 +440,7 @@ local ToggleContainer = ToggleScreenGUI:FindFirstChild("ToggleContainer")
 if not ToggleContainer then
 	ToggleContainer = Instance.new("Frame")
 	ToggleContainer.Name = "ToggleContainer"
-	ToggleContainer.Size = UDim2.new(1, 0, 0, 48)
+	ToggleContainer.Size = UDim2.new(1, -4, 0, 48)
 	ToggleContainer.Position = UDim2.fromOffset(0, 10)
 	ToggleContainer.BackgroundTransparency = 1
 	ToggleContainer.Parent = ToggleScreenGUI
