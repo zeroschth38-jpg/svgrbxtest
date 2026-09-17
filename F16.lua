@@ -26,7 +26,7 @@ local Targets = {
 	Vector3.new(-1792, 175, 2769),
 }
 
-local VERSION = "v0.82"
+local VERSION = "v0.83"
 
 --// Farm Area
 local FARM_CENTER = Vector3.new(-1715, 173, 2798)
@@ -2050,7 +2050,7 @@ RunService.Heartbeat:Connect(function()
 			if MobHumanoid and MobRoot and MobHumanoid.Health > 0 then
 				local Distance = (RootPart.Position - MobRoot.Position).Magnitude
 
-				if Distance <= GOBLIN_REACH_DISTANCE then
+				-- if Distance <= GOBLIN_REACH_DISTANCE then
 					if now - LAST_ATTACK_TIME >= ATTACK_INTERVAL then
 						LAST_ATTACK_TIME = now
 
@@ -2064,7 +2064,7 @@ RunService.Heartbeat:Connect(function()
 							Enum.UserInputState.Begin
 						)
 					end
-				end
+				-- end
 			end
 		end
 	else
