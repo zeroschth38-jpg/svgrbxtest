@@ -26,7 +26,7 @@ local Targets = {
 	Vector3.new(-1792, 175, 2769),
 }
 
-local VERSION = "v0.89"
+local VERSION = "v0.9"
 
 --// Farm Area
 local FARM_CENTER = Vector3.new(-1715, 173, 2798)
@@ -2072,15 +2072,15 @@ RunService.Heartbeat:Connect(function()
 			if MobHumanoid and MobRoot and MobHumanoid.Health > 0 then
 				local Distance = (RootPart.Position - MobRoot.Position).Magnitude
 
+				InputBindableFunction:Invoke(
+					"AttackButton",
+					Enum.UserInputState.Begin
+				)
+					
 				-- if Distance <= GOBLIN_REACH_DISTANCE then
 				if Distance <= (PlayerOffset and PlayerOffset.Value + 2 or GOBLIN_REACH_DISTANCE) then
 					if now - LAST_ATTACK_TIME >= ATTACK_INTERVAL then
 						LAST_ATTACK_TIME = now
-
-						InputBindableFunction:Invoke(
-							"AttackButton",
-							Enum.UserInputState.Begin
-						)
 
 						InputBindableFunction:Invoke(
 							"SkillButton",
