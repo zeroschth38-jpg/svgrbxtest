@@ -1,7 +1,9 @@
 local Players    = game:GetService("Players")
 local Replicated = game:GetService("ReplicatedStorage")
 local StarterGui = game:GetService("StarterGui")
-local RunService = game:GetService("RunService")
+local RunService      = game:GetService("RunService")
+local UserInputService = game:GetService("UserInputService")
+local MarketplaceService = game:GetService("MarketplaceService")
 
 local Player    = Players.LocalPlayer
 local PlayerGui = Player:WaitForChild("PlayerGui")
@@ -38,17 +40,7 @@ local Character
 local Humanoid
 local RootPart
 
-local currentTarget = 1
-local Enabled       = true
-
-local Equipped       = false
-local AttackInterval = 0.2
-local LastAttack     = 0
-local TargetCurrency = "Golden Shell"
-local LastInventory  = nil
-local EventCurrency  = 0
-
-local TargetPlaceID  = 11987539001
+local CURRENT_WAYPOINT_TARGET = 1
 local MAX_SERVER_AGE = 8 * 60 * 60
 
 --// Combat
@@ -56,6 +48,8 @@ local TARGET_ENTITY_PRIORITY = {
 	[1] = "Goblin",
 	[2] = "Leader Goblin",
 }
+
+local ClosestTarget = nil
 
 local REACH_DISTANCE        = 5
 local GOBLIN_REACH_DISTANCE = 7
@@ -67,14 +61,32 @@ local DEATH_COUNT           = 0
 local RETREAT_DISTANCE   = 30
 local RETREAT_DIRECTIONS = 16
 
-local ClosestTarget = nil
+--// Player Combat
+local ATTACK_INTERVAL  = 0.2
+local LAST_ATTACK_TIME = 0
 
-local ConsumeCooldown  = 10
-local LastConsumeStamp = 0
+--// Potion Consume
+local CONSUME_INTERVAL  = 10
+local LAST_CONSUME_TIME = 0
 
+--// Interaction
+local INTERACTION_INTERVAL  = 0.5
+local LAST_INTERACTION_TIME = 0
+
+--// InputBindableFunction
 local InputBindableFunction = nil
 
+local Enabled       = true
+
+local Equipped       = false
+local TargetCurrency = "Golden Shell"
+local LastInventory  = nil
+local EventCurrency  = 0
+
+local TargetPlaceID  = 11987539001
+
 local BlockCache = {}
+local BlockEnabled = true
 
 --// Character
 local function updateCharacter()
@@ -89,10 +101,12 @@ local function updateCharacter()
 	Humanoid = Character:FindFirstChildOfClass("Humanoid")
 	RootPart = Character:FindFirstChild("HumanoidRootPart")
 
-	Humanoid:SetStateEnabled(Enum.HumanoidStateType.Ragdoll, false)
-	Humanoid:SetStateEnabled(Enum.HumanoidStateType.FallingDown, false)
-	Humanoid:SetStateEnabled(Enum.HumanoidStateType.Physics, false)
-	Humanoid:SetStateEnabled(Enum.HumanoidStateType.Climbing, false)
+	task.defer(function()
+		Humanoid:SetStateEnabled(Enum.HumanoidStateType.Ragdoll, false)
+		Humanoid:SetStateEnabled(Enum.HumanoidStateType.FallingDown, false)
+		Humanoid:SetStateEnabled(Enum.HumanoidStateType.Physics, false)
+		Humanoid:SetStateEnabled(Enum.HumanoidStateType.Climbing, false)
+	end)
 end
 updateCharacter()
 
@@ -100,7 +114,7 @@ Player.CharacterAdded:Connect(function()
 	task.wait()
 
 	DEATH_COUNT += 1
-	currentTarget = 1
+	CURRENT_WAYPOINT_TARGET = 1
 	ClosestTarget = nil
 	InputBindableFunction = nil
 	Equipped = false
@@ -125,32 +139,33 @@ end
 
 local Panel = Instance.new("Frame")
 Panel.Name = "Panel"
-Panel.Size = UDim2.new(0.25, 0, 0.40, 0)
-Panel.Position = UDim2.new(0.73, 0, 0.32, 0)
-Panel.BackgroundColor3 = Color3.fromRGB(22, 22, 26)
+Panel.Size = UDim2.new(0.30, 0, 0.62, 0)
+Panel.Position = UDim2.new(0.67, 0, 0.19, 0)
+Panel.BackgroundColor3 = Color3.fromRGB(245, 245, 245)
+Panel.BackgroundTransparency = 0.1
 Panel.BorderSizePixel = 0
 Panel.Parent = ScreenGui
 
 local PanelCorner = Instance.new("UICorner")
-PanelCorner.CornerRadius = UDim.new(0.08, 0)
+PanelCorner.CornerRadius = UDim.new(0.01, 0)
 PanelCorner.Parent = Panel
 
 local PanelStroke = Instance.new("UIStroke")
-PanelStroke.Color = Color3.fromRGB(70, 70, 78)
+PanelStroke.Color = Color3.fromRGB(70, 70, 70)
 PanelStroke.Thickness = 1
 PanelStroke.Transparency = 0.2
 PanelStroke.Parent = Panel
 
 local Padding = Instance.new("UIPadding")
-Padding.PaddingTop    = UDim.new(0.07, 0)
-Padding.PaddingBottom = UDim.new(0.07, 0)
-Padding.PaddingLeft   = UDim.new(0.07, 0)
-Padding.PaddingRight  = UDim.new(0.07, 0)
+Padding.PaddingTop    = UDim.new(0.04, 0)
+Padding.PaddingBottom = UDim.new(0.04, 0)
+Padding.PaddingLeft   = UDim.new(0.06, 0)
+Padding.PaddingRight  = UDim.new(0.06, 0)
 Padding.Parent = Panel
 
 local Layout = Instance.new("UIListLayout")
 Layout.SortOrder = Enum.SortOrder.LayoutOrder
-Layout.Padding = UDim.new(0, 0)
+Layout.Padding = UDim.new(0, 1)
 Layout.HorizontalAlignment = Enum.HorizontalAlignment.Center
 Layout.VerticalAlignment = Enum.VerticalAlignment.Center
 Layout.Parent = Panel
@@ -159,11 +174,11 @@ Layout.Parent = Panel
 local Title = Instance.new("TextLabel")
 Title.Name = "Title"
 Title.LayoutOrder = 1
-Title.Size = UDim2.new(1, 0, 0.16, 0)
+Title.Size = UDim2.new(1, 0, 0.10, 0)
 Title.BackgroundTransparency = 1
-Title.Text = "AUTO FARMING (F16) " .. VERSION
-Title.TextColor3 = Color3.fromRGB(255, 255, 255)
-Title.TextSize = 18
+Title.Text = "AUTO FARMING (" .. MarketplaceService:GetProductInfoAsync(TargetPlaceID).Name.. ") " .. VERSION
+Title.TextColor3 = Color3.fromRGB(40, 40, 40)
+Title.TextScaled = true
 Title.Font = Enum.Font.GothamBold
 Title.TextXAlignment = Enum.TextXAlignment.Left
 Title.Parent = Panel
@@ -172,7 +187,7 @@ Title.Parent = Panel
 local Status = Instance.new("TextLabel")
 Status.Name = "Status"
 Status.LayoutOrder = 2
-Status.Size = UDim2.new(1, 0, 0.11, 0)
+Status.Size = UDim2.new(1, 0, 0.06, 0)
 Status.BackgroundTransparency = 1
 Status.TextColor3 = Color3.fromRGB(150, 150, 158)
 Status.TextSize = 12
@@ -184,7 +199,7 @@ Status.Parent = Panel
 local Toggle = Instance.new("TextButton")
 Toggle.Name = "Toggle"
 Toggle.LayoutOrder = 3
-Toggle.Size = UDim2.new(1, 0, 0.19, 0)
+Toggle.Size = UDim2.new(1, 0, 0.09, 0)
 Toggle.BorderSizePixel = 0
 Toggle.TextColor3 = Color3.fromRGB(255, 255, 255)
 Toggle.TextSize = 13
@@ -193,57 +208,71 @@ Toggle.AutoButtonColor = false
 Toggle.Parent = Panel
 
 local ToggleCorner = Instance.new("UICorner")
-ToggleCorner.CornerRadius = UDim.new(0.2, 0)
+ToggleCorner.CornerRadius = UDim.new(0.18, 0)
 ToggleCorner.Parent = Toggle
 
 --// Place ID
 local PlaceIDLabel = Instance.new("TextLabel")
 PlaceIDLabel.Name = "PlaceId"
 PlaceIDLabel.LayoutOrder = 4
-PlaceIDLabel.Size = UDim2.new(1, 0, 0.11, 0)
+PlaceIDLabel.Size = UDim2.new(1, 0, 0.055, 0)
 PlaceIDLabel.BackgroundTransparency = 1
-PlaceIDLabel.TextColor3 = Color3.fromRGB(205, 205, 210)
+PlaceIDLabel.TextColor3 = Color3.fromRGB(40, 40, 40)
 PlaceIDLabel.TextSize = 12
 PlaceIDLabel.Font = Enum.Font.GothamMedium
 PlaceIDLabel.TextXAlignment = Enum.TextXAlignment.Left
 PlaceIDLabel.TextTruncate = Enum.TextTruncate.AtEnd
 PlaceIDLabel.Parent = Panel
 
---// WalkSpeed
-local WalkSpeedLabel = Instance.new("TextLabel")
-WalkSpeedLabel.Name = "WalkSpeed"
-WalkSpeedLabel.LayoutOrder = 5
-WalkSpeedLabel.Size = UDim2.new(1, 0, 0.11, 0)
-WalkSpeedLabel.BackgroundTransparency = 1
-WalkSpeedLabel.Text = "WalkSpeed   0"
-WalkSpeedLabel.TextColor3 = Color3.fromRGB(205, 205, 210)
-WalkSpeedLabel.TextSize = 12
-WalkSpeedLabel.Font = Enum.Font.GothamMedium
-WalkSpeedLabel.TextXAlignment = Enum.TextXAlignment.Left
-WalkSpeedLabel.TextTruncate = Enum.TextTruncate.AtEnd
-WalkSpeedLabel.Parent = Panel
-
 --// Position
 local PositionLabel = Instance.new("TextLabel")
 PositionLabel.Name = "Position"
-PositionLabel.LayoutOrder = 6
-PositionLabel.Size = UDim2.new(1, 0, 0.11, 0)
+PositionLabel.LayoutOrder = 5
+PositionLabel.Size = UDim2.new(1, 0, 0.055, 0)
 PositionLabel.BackgroundTransparency = 1
-PositionLabel.TextColor3 = Color3.fromRGB(205, 205, 210)
+PositionLabel.TextColor3 = Color3.fromRGB(40, 40, 40)
 PositionLabel.TextSize = 12
 PositionLabel.Font = Enum.Font.GothamMedium
 PositionLabel.TextXAlignment = Enum.TextXAlignment.Left
 PositionLabel.TextTruncate = Enum.TextTruncate.AtEnd
 PositionLabel.Parent = Panel
 
+--// WalkSpeed
+local WalkSpeedLabel = Instance.new("TextLabel")
+WalkSpeedLabel.Name = "WalkSpeed"
+WalkSpeedLabel.LayoutOrder = 6
+WalkSpeedLabel.Size = UDim2.new(1, 0, 0.055, 0)
+WalkSpeedLabel.BackgroundTransparency = 1
+WalkSpeedLabel.Text = "WalkSpeed   0"
+WalkSpeedLabel.TextColor3 = Color3.fromRGB(40, 40, 40)
+WalkSpeedLabel.TextSize = 12
+WalkSpeedLabel.Font = Enum.Font.GothamMedium
+WalkSpeedLabel.TextXAlignment = Enum.TextXAlignment.Left
+WalkSpeedLabel.TextTruncate = Enum.TextTruncate.AtEnd
+WalkSpeedLabel.Parent = Panel
+
+--// Waypoints
+local WayPointLabel = Instance.new("TextLabel")
+WayPointLabel.Name = "Waypoints"
+WayPointLabel.LayoutOrder = 7
+WayPointLabel.Size = UDim2.new(1, 0, 0.055, 0)
+WayPointLabel.BackgroundTransparency = 1
+WayPointLabel.Text = "Waypoints   0/" .. #Targets
+WayPointLabel.TextColor3 = Color3.fromRGB(40, 40, 40)
+WayPointLabel.TextSize = 12
+WayPointLabel.Font = Enum.Font.GothamMedium
+WayPointLabel.TextXAlignment = Enum.TextXAlignment.Left
+WayPointLabel.TextTruncate = Enum.TextTruncate.AtEnd
+WayPointLabel.Parent = Panel
+
 --// Event Currency
 local EventCurrencyLabel = Instance.new("TextLabel")
 EventCurrencyLabel.Name = "EventCurrency"
-EventCurrencyLabel.LayoutOrder = 7
-EventCurrencyLabel.Size = UDim2.new(1, 0, 0.11, 0)
+EventCurrencyLabel.LayoutOrder = 8
+EventCurrencyLabel.Size = UDim2.new(1, 0, 0.055, 0)
 EventCurrencyLabel.BackgroundTransparency = 1
 EventCurrencyLabel.Text = "Event Currency   0"
-EventCurrencyLabel.TextColor3 = Color3.fromRGB(205, 205, 210)
+EventCurrencyLabel.TextColor3 = Color3.fromRGB(40, 40, 40)
 EventCurrencyLabel.TextSize = 12
 EventCurrencyLabel.Font = Enum.Font.GothamMedium
 EventCurrencyLabel.TextXAlignment = Enum.TextXAlignment.Left
@@ -253,16 +282,165 @@ EventCurrencyLabel.Parent = Panel
 --// Server Age
 local ServerAgeLabel = Instance.new("TextLabel")
 ServerAgeLabel.Name = "ServerAge"
-ServerAgeLabel.LayoutOrder = 8
-ServerAgeLabel.Size = UDim2.new(1, 0, 0.11, 0)
+ServerAgeLabel.LayoutOrder = 9
+ServerAgeLabel.Size = UDim2.new(1, 0, 0.055, 0)
 ServerAgeLabel.BackgroundTransparency = 1
 ServerAgeLabel.Text = "Server Age   00:00:00"
-ServerAgeLabel.TextColor3 = Color3.fromRGB(205, 205, 210)
+ServerAgeLabel.TextColor3 = Color3.fromRGB(40, 40, 40)
 ServerAgeLabel.TextSize = 12
 ServerAgeLabel.Font = Enum.Font.GothamMedium
 ServerAgeLabel.TextXAlignment = Enum.TextXAlignment.Left
 ServerAgeLabel.TextTruncate = Enum.TextTruncate.AtEnd
 ServerAgeLabel.Parent = Panel
+
+--// Block Toggle
+local BlockToggle = Instance.new("TextButton")
+BlockToggle.Name = "BlockToggle"
+BlockToggle.LayoutOrder = 10
+BlockToggle.Size = UDim2.new(1, 0, 0.09, 0)
+BlockToggle.BorderSizePixel = 0
+BlockToggle.TextColor3 = Color3.fromRGB(255, 255, 255)
+BlockToggle.TextSize = 12
+BlockToggle.Font = Enum.Font.GothamBold
+BlockToggle.AutoButtonColor = false
+BlockToggle.Parent = Panel
+
+local BlockToggleCorner = Instance.new("UICorner")
+BlockToggleCorner.CornerRadius = UDim.new(0.18, 0)
+BlockToggleCorner.Parent = BlockToggle
+
+--// Enemy Priority Header
+local PriorityHeader = Instance.new("TextLabel")
+PriorityHeader.Name = "PriorityHeader"
+PriorityHeader.LayoutOrder = 11
+PriorityHeader.Size = UDim2.new(1, 0, 0.06, 0)
+PriorityHeader.BackgroundTransparency = 1
+PriorityHeader.Text = "ENEMY PRIORITY"
+PriorityHeader.TextColor3 = Color3.fromRGB(40, 40, 40)
+PriorityHeader.TextSize = 11
+PriorityHeader.Font = Enum.Font.GothamBold
+PriorityHeader.TextXAlignment = Enum.TextXAlignment.Left
+PriorityHeader.Parent = Panel
+
+local PriorityRows = {}
+
+local function CreatePriorityRow(Index)
+	local Row = Instance.new("Frame")
+	Row.Name = "Priority" .. Index
+	Row.LayoutOrder = 12 + Index
+	Row.Size = UDim2.new(1, 0, 0.075, 0)
+	Row.BackgroundColor3 = Color3.fromRGB(200, 200, 200)
+	Row.BorderSizePixel = 0
+	Row.Parent = Panel
+
+	local RowCorner = Instance.new("UICorner")
+	RowCorner.CornerRadius = UDim.new(0.15, 0)
+	RowCorner.Parent = Row
+
+	local NumberLabel = Instance.new("TextLabel")
+	NumberLabel.Name = "Number"
+	NumberLabel.Size = UDim2.new(0.12, 0, 1, 0)
+	NumberLabel.Position = UDim2.new(0.03, 0, 0, 0)
+	NumberLabel.BackgroundTransparency = 1
+	NumberLabel.TextColor3 = Color3.fromRGB(40, 40, 40)
+	NumberLabel.TextSize = 11
+	NumberLabel.Font = Enum.Font.GothamBold
+	NumberLabel.TextXAlignment = Enum.TextXAlignment.Left
+	NumberLabel.Parent = Row
+
+	local NameLabel = Instance.new("TextLabel")
+	NameLabel.Name = "Name"
+	NameLabel.Size = UDim2.new(0.52, 0, 1, 0)
+	NameLabel.Position = UDim2.new(0.14, 0, 0, 0)
+	NameLabel.BackgroundTransparency = 1
+	NameLabel.TextColor3 = Color3.fromRGB(40, 40, 40)
+	NameLabel.TextSize = 12
+	NameLabel.Font = Enum.Font.GothamMedium
+	NameLabel.TextXAlignment = Enum.TextXAlignment.Left
+	NameLabel.TextTruncate = Enum.TextTruncate.AtEnd
+	NameLabel.Parent = Row
+
+	local UpButton = Instance.new("TextButton")
+	UpButton.Name = "Up"
+	UpButton.Size = UDim2.new(0.14, 0, 0.70, 0)
+	UpButton.Position = UDim2.new(0.70, 0, 0.15, 0)
+	UpButton.BackgroundColor3 = Color3.fromRGB(150, 255, 0)
+	UpButton.BorderSizePixel = 0
+	UpButton.Text = "▲"
+	UpButton.TextColor3 = Color3.fromRGB(250, 250, 255)
+	UpButton.TextSize = 11
+	UpButton.TextScaled = true
+	UpButton.Font = Enum.Font.GothamBold
+	UpButton.AutoButtonColor = true
+	UpButton.Parent = Row
+
+	local UpCorner = Instance.new("UICorner")
+	UpCorner.CornerRadius = UDim.new(0.2, 0)
+	UpCorner.Parent = UpButton
+
+	local DownButton = Instance.new("TextButton")
+	DownButton.Name = "Down"
+	DownButton.Size = UDim2.new(0.14, 0, 0.70, 0)
+	DownButton.Position = UDim2.new(0.86, 0, 0.15, 0)
+	DownButton.BackgroundColor3 = Color3.fromRGB(255, 100, 105)
+	DownButton.BorderSizePixel = 0
+	DownButton.Text = "▼"
+	DownButton.TextColor3 = Color3.fromRGB(250, 250, 255)
+	DownButton.TextSize = 11
+	DownButton.TextScaled = true
+	DownButton.Font = Enum.Font.GothamBold
+	DownButton.AutoButtonColor = true
+	DownButton.Parent = Row
+
+	local DownCorner = Instance.new("UICorner")
+	DownCorner.CornerRadius = UDim.new(0.2, 0)
+	DownCorner.Parent = DownButton
+
+	PriorityRows[Index] = {
+		Row = Row,
+		Number = NumberLabel,
+		Name = NameLabel,
+		Up = UpButton,
+		Down = DownButton,
+	}
+
+	UpButton.Activated:Connect(function()
+		if Index > 1 then
+			TARGET_ENTITY_PRIORITY[Index], TARGET_ENTITY_PRIORITY[Index - 1] =
+				TARGET_ENTITY_PRIORITY[Index - 1], TARGET_ENTITY_PRIORITY[Index]
+
+			for i, RowData in PriorityRows do
+				RowData.Number.Text = tostring(i) .. "."
+				RowData.Name.Text = TARGET_ENTITY_PRIORITY[i] or "--"
+			end
+		end
+	end)
+
+	DownButton.Activated:Connect(function()
+		if Index < #TARGET_ENTITY_PRIORITY then
+			TARGET_ENTITY_PRIORITY[Index], TARGET_ENTITY_PRIORITY[Index + 1] =
+				TARGET_ENTITY_PRIORITY[Index + 1], TARGET_ENTITY_PRIORITY[Index]
+
+			for i, RowData in PriorityRows do
+				RowData.Number.Text = tostring(i) .. "."
+				RowData.Name.Text = TARGET_ENTITY_PRIORITY[i] or "--"
+			end
+		end
+	end)
+end
+
+for Index = 1, #TARGET_ENTITY_PRIORITY do
+	CreatePriorityRow(Index)
+end
+
+local function updatePriorityUI()
+	for i, RowData in PriorityRows do
+		RowData.Number.Text = tostring(i) .. "."
+		RowData.Name.Text = TARGET_ENTITY_PRIORITY[i] or "--"
+	end
+end
+
+updatePriorityUI()
 
 --// GUI Toggle
 local GUIToggle = Instance.new("TextButton")
@@ -286,7 +464,6 @@ local GUIVisible = true
 
 GUIToggle.Activated:Connect(function()
 	GUIVisible = not GUIVisible
-
 	Panel.Visible = GUIVisible
 
 	if GUIVisible then
@@ -296,15 +473,74 @@ GUIToggle.Activated:Connect(function()
 	end
 end)
 
+--// Panel Dragging
+local Dragging = false
+local DragStart = nil
+local StartPosition = nil
+
+Panel.InputBegan:Connect(function(Input)
+	if Input.UserInputType == Enum.UserInputType.MouseButton1
+		or Input.UserInputType == Enum.UserInputType.Touch
+	then
+		Dragging = true
+		DragStart = Input.Position
+		StartPosition = Panel.Position
+
+		Input.Changed:Connect(function()
+			if Input.UserInputState == Enum.UserInputState.End then
+				Dragging = false
+			end
+		end)
+	end
+end)
+
+UserInputService.InputChanged:Connect(function(Input)
+	if not Dragging then
+		return
+	end
+
+	if Input.UserInputType ~= Enum.UserInputType.MouseMovement
+		and Input.UserInputType ~= Enum.UserInputType.Touch
+	then
+		return
+	end
+
+	local Delta = Input.Position - DragStart
+
+	Panel.Position = UDim2.new(
+		StartPosition.X.Scale,
+		StartPosition.X.Offset + Delta.X,
+		StartPosition.Y.Scale,
+		StartPosition.Y.Offset + Delta.Y
+	)
+end)
+
+local function updateBlockButton()
+	if BlockEnabled then
+		BlockToggle.Text = "●  AUTO BLOCKING  •  ENABLED"
+		BlockToggle.BackgroundColor3 = Color3.fromRGB(60, 125, 50)
+	else
+		BlockToggle.Text = "●  AUTO BLOCKING  •  DISABLED"
+		BlockToggle.BackgroundColor3 = Color3.fromRGB(255, 65, 65)
+	end
+end
+
+BlockToggle.Activated:Connect(function()
+	BlockEnabled = not BlockEnabled
+	updateBlockButton()
+end)
+
+updateBlockButton()
+
 --// UI Update
 local function updateButton()
 	if Enabled then
 		Toggle.Text = "●  AUTO FARMING  •  ENABLED"
-		Toggle.BackgroundColor3 = Color3.fromRGB(42, 95, 68)
+		Toggle.BackgroundColor3 = Color3.fromRGB(60, 125, 50)
 		Status.Text = "Farming system is active"
 	else
 		Toggle.Text = "●  AUTO FARMING  •  DISABLED"
-		Toggle.BackgroundColor3 = Color3.fromRGB(75, 43, 43)
+		Toggle.BackgroundColor3 = Color3.fromRGB(255, 65, 65)
 		Status.Text = "Farming system is paused"
 	end
 end
@@ -382,7 +618,7 @@ local function updatePosition()
 	end
 end
 
-PlaceIDLabel.Text = "Place ID   " .. game.PlaceId
+PlaceIDLabel.Text = `Place ID  {game.PlaceId} {game.PlaceId ~= TargetPlaceID and "(NOT MATCH)" or ""}`
 
 Toggle.Activated:Connect(function()
 	Enabled = not Enabled
@@ -885,6 +1121,19 @@ local function MoveToGoblin(Goblin)
 	Humanoid:MoveTo(TargetPosition)
 end
 
+local function DoJump()
+	if not Humanoid then
+		return
+	end
+
+	if Humanoid.FloorMaterial ~= Enum.Material.Air
+		and Humanoid:GetState() ~= Enum.HumanoidStateType.Jumping
+	then
+		Humanoid.Jump = true
+		Humanoid:ChangeState(Enum.HumanoidStateType.Jumping)
+	end
+end
+
 --// Position Update
 RunService.RenderStepped:Connect(function()
 	updatePosition()
@@ -892,6 +1141,7 @@ end)
 
 --// Movement + Block
 RunService.Heartbeat:Connect(function()
+	local now = os.clock()
 	if game.PlaceId ~= TargetPlaceID then
 		Enabled = false
 		updateButton()
@@ -910,7 +1160,7 @@ RunService.Heartbeat:Connect(function()
 	updateServerAge()
 	updateEventCurrency()
 
-	WalkSpeedLabel.Text = "WalkSpeed   " .. Humanoid.WalkSpeed .. " | Death   " .. DEATH_COUNT .. " | WP   " .. currentTarget .. "/" .. #Targets
+	WalkSpeedLabel.Text = "WalkSpeed   " .. Humanoid.WalkSpeed .. " | Death   " .. DEATH_COUNT .. " | WP   " .. CURRENT_WAYPOINT_TARGET .. "/" .. #Targets
 	Humanoid.WalkSpeed = 38
 
 	if not Enabled then
@@ -924,9 +1174,11 @@ RunService.Heartbeat:Connect(function()
 	end
 
 	local Sword = Character:FindFirstChild("Sword")
-	if not Sword then
+	if not Sword or (Sword and not Sword:FindFirstChild("MainWeld", true)) then
 		return
 	end
+
+	local MainWeld = Sword:FindFirstChild("MainWeld", true)
 
 	--// Emergency Retreat
 	if Humanoid.Health <= Humanoid.MaxHealth * 0.4 then
@@ -934,63 +1186,61 @@ RunService.Heartbeat:Connect(function()
 
 		local UseConsumable = Replicated:FindFirstChild("UseConsumable", true)
 		local PlayerStats   = Player:FindFirstChild("PlayerStats")
-
-		local Sword = Character:FindFirstChild("Sword")
-
-		local MainWeld = Sword:FindFirstChild("MainWeld", true)
-		if InputBindableFunction and (Equipped or (MainWeld and MainWeld.Part1 and MainWeld.Part1.Name ~= "UpperTorso")) then
+		if InputBindableFunction and (Equipped or (MainWeld.Part1 and MainWeld.Part1.Name ~= "UpperTorso")) then
 			Equipped = false
 			InputBindableFunction:Invoke("EquipButton", Enum.UserInputState.Begin)
 			return
 		end
 		if UseConsumable and PlayerStats and not Equipped then
 			local LastConsumed = PlayerStats:FindFirstChild("LastConsumed")
-	
+
 			if LastConsumed
 				and LastConsumed.Value ~= ""
-				and os.clock() - LastConsumeStamp >= ConsumeCooldown
+				and now - LAST_CONSUME_TIME >= CONSUME_INTERVAL
 			then
-				LastConsumeStamp = os.clock()
+				LAST_CONSUME_TIME = now
 				UseConsumable:InvokeServer(LastConsumed.Value)
 			end
 		end
-
+		DoJump()
 		RetreatFromGoblins()
 		return
 	end
 
 	--// Player Check
-	local HasOtherPlayer  = false
-	local HasBlockedPlayer = false
+	if BlockEnabled then
+		local HasOtherPlayer  = false
+		local HasBlockedPlayer = false
 
-	for _, plr in Players:GetPlayers() do
-		if plr == Player then
-			continue
-		end
-
-		HasOtherPlayer = true
-
-		if isBlocked(plr.UserId) then
-			HasBlockedPlayer = true
-			BlockCache[plr.UserId] = nil
-			break
-		end
-	end
-
-	if HasBlockedPlayer then
-		TeleportToPlace()
-		return
-	end
-
-	if HasOtherPlayer then
 		for _, plr in Players:GetPlayers() do
 			if plr == Player then
 				continue
 			end
 
-			if not isBlocked(plr.UserId) then
-				promptBlockPlayer(plr)
-				return
+			HasOtherPlayer = true
+
+			if isBlocked(plr.UserId) then
+				HasBlockedPlayer = true
+				BlockCache[plr.UserId] = nil
+				break
+			end
+		end
+
+		if HasBlockedPlayer then
+			TeleportToPlace()
+			return
+		end
+
+		if HasOtherPlayer then
+			for _, plr in Players:GetPlayers() do
+				if plr == Player then
+					continue
+				end
+
+				if not isBlocked(plr.UserId) then
+					promptBlockPlayer(plr)
+					return
+				end
 			end
 		end
 	end
@@ -1002,12 +1252,12 @@ RunService.Heartbeat:Connect(function()
 	end
 
 	--// Movement
-	local target = Targets[currentTarget]
+	local target = Targets[CURRENT_WAYPOINT_TARGET]
 
-	if currentTarget < #Targets then
+	if CURRENT_WAYPOINT_TARGET < #Targets then
 		if (RootPart.Position - target).Magnitude <= REACH_DISTANCE then
-			currentTarget += 1
-			target = Targets[currentTarget]
+			CURRENT_WAYPOINT_TARGET += 1
+			target = Targets[CURRENT_WAYPOINT_TARGET]
 		end
 
 		Humanoid:MoveTo(target)
@@ -1040,34 +1290,26 @@ RunService.Heartbeat:Connect(function()
 	end
 
 	--// Jump
-	if currentTarget < #Targets then
+	if CURRENT_WAYPOINT_TARGET < #Targets then
 		local heightDifference = target.Y - RootPart.Position.Y
 
-		if heightDifference >= JUMP_HEIGHT
-			and Humanoid.FloorMaterial ~= Enum.Material.Air
-			and Humanoid:GetState() ~= Enum.HumanoidStateType.Jumping
-		then
-			Humanoid.Jump = true
-			Humanoid:ChangeState(Enum.HumanoidStateType.Jumping)
+		if heightDifference >= JUMP_HEIGHT then
+			DoJump()
 		end
 	end
 
 	--// Swim Recovery
 	if Humanoid:GetState() == Enum.HumanoidStateType.Swimming then
-		Humanoid.Jump = true
-		Humanoid:ChangeState(Enum.HumanoidStateType.Jumping)
+		DoJump()
 		return
 	end
 
 	--// Combat
-	if currentTarget == #Targets then
+	if CURRENT_WAYPOINT_TARGET == #Targets then
 		if ClosestTarget then
-			local MainWeld = Sword:FindFirstChild("MainWeld", true)
-
-			if not Equipped or (MainWeld and MainWeld.Part1 and MainWeld.Part1.Name == "UpperTorso") then
+			if not Equipped or (MainWeld.Part1 and MainWeld.Part1.Name == "UpperTorso") then
 				Equipped = true
 				InputBindableFunction:Invoke("EquipButton", Enum.UserInputState.Begin)
-				warn("SHOULD EQUIP SWORD NOW!")
 				return
 			end
 
@@ -1076,15 +1318,17 @@ RunService.Heartbeat:Connect(function()
 			if MobHumanoid and MobRoot and MobHumanoid.Health > 0 then
 				local Distance = (RootPart.Position - MobRoot.Position).Magnitude
 				if Distance <= GOBLIN_REACH_DISTANCE then
-					if os.clock() - LastAttack >= AttackInterval then
+					if now - LAST_ATTACK_TIME >= ATTACK_INTERVAL then
 						InputBindableFunction:Invoke("AttackButton", Enum.UserInputState.Begin)
 						InputBindableFunction:Invoke("SkillButton", Enum.UserInputState.Begin)
-						LastAttack = os.clock()
+						LAST_ATTACK_TIME = now
 					end
 				end
 			end
 		end
 	else
-		InputBindableFunction:Invoke("InteractButton", Enum.UserInputState.Begin)
+		if now - LAST_INTERACTION_TIME >= INTERACTION_INTERVAL then
+			InputBindableFunction:Invoke("InteractButton", Enum.UserInputState.Begin)
+		end
 	end
 end)
