@@ -26,7 +26,7 @@ local Targets = {
 	Vector3.new(-1792, 175, 2769),
 }
 
-local VERSION = "v0.83"
+local VERSION = "v0.84"
 
 --// Farm Area
 local FARM_CENTER = Vector3.new(-1715, 173, 2798)
@@ -34,7 +34,7 @@ local FARM_RADIUS = 200
 
 --// Farm Deadzone
 local FARM_DEADZONE_CENTER = Vector3.new(-1681, 173, 2821)
-local FARM_DEADZONE_RADIUS = 15
+local FARM_DEADZONE_RADIUS = 30
 
 local Character
 local Humanoid
@@ -52,7 +52,7 @@ local TARGET_ENTITY_PRIORITY = {
 local ClosestTarget = nil
 
 local REACH_DISTANCE        = 5
-local GOBLIN_REACH_DISTANCE = 7
+local GOBLIN_REACH_DISTANCE = 15
 local JUMP_HEIGHT           = 3
 local BLOCK_COOLDOWN        = 3
 local DEATH_COUNT           = 0
@@ -2050,7 +2050,7 @@ RunService.Heartbeat:Connect(function()
 			if MobHumanoid and MobRoot and MobHumanoid.Health > 0 then
 				local Distance = (RootPart.Position - MobRoot.Position).Magnitude
 
-				-- if Distance <= GOBLIN_REACH_DISTANCE then
+				if Distance <= GOBLIN_REACH_DISTANCE then
 					if now - LAST_ATTACK_TIME >= ATTACK_INTERVAL then
 						LAST_ATTACK_TIME = now
 
@@ -2064,7 +2064,7 @@ RunService.Heartbeat:Connect(function()
 							Enum.UserInputState.Begin
 						)
 					end
-				-- end
+				end
 			end
 		end
 	else
