@@ -75,6 +75,7 @@ local LAST_INTERACTION_TIME = 0
 
 --// InputBindableFunction
 local InputBindableFunction = nil
+local BlockValue = nil
 
 local Enabled       = true
 
@@ -121,6 +122,7 @@ Player.CharacterAdded:Connect(function()
 	CURRENT_WAYPOINT_TARGET = 1
 	ClosestTarget = nil
 	InputBindableFunction = nil
+	BlockValue = nil
 	Equipped = false
 
 	task.delay(0.5, function()
@@ -1376,6 +1378,13 @@ RunService.Heartbeat:Connect(function()
 	if not InputBindableFunction then
 		InputBindableFunction = PlayerGui:FindFirstChild("InputBindableFunction", true) :: BindableFunction
 		return
+	end
+
+	if not BlockValue then
+		BlockValue = Replicated:FindFirstChild("BlockValue", true) :: RemoteEvent
+		if BlockValue then
+			BlockValue:FireServer(true)
+		end
 	end
 
 	local Sword = Character:FindFirstChild("Sword")
