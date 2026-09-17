@@ -26,7 +26,7 @@ local Targets = {
 	Vector3.new(-1792, 175, 2769),
 }
 
-local VERSION = "v0.73"
+local VERSION = "v0.8"
 
 --// Farm Area
 local FARM_CENTER = Vector3.new(-1715, 173, 2798)
@@ -102,6 +102,10 @@ local function updateCharacter()
 	RootPart = Character:FindFirstChild("HumanoidRootPart")
 
 	task.defer(function()
+		if not Humanoid then
+			return
+		end
+
 		Humanoid:SetStateEnabled(Enum.HumanoidStateType.Ragdoll, false)
 		Humanoid:SetStateEnabled(Enum.HumanoidStateType.FallingDown, false)
 		Humanoid:SetStateEnabled(Enum.HumanoidStateType.Physics, false)
@@ -203,7 +207,7 @@ Title.Name = "Title"
 Title.Size = UDim2.fromScale(0.8205, 0.3889)
 Title.Position = UDim2.fromScale(0.0769, 0.1528)
 Title.BackgroundTransparency = 1
-Title.Text = "AUTO FARMING"
+Title.Text = "AUTO FARMING (F16)"
 Title.TextColor3 = UI_TEXT
 Title.TextScaled = true
 Title.Font = Enum.Font.GothamBold
