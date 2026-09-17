@@ -26,7 +26,7 @@ local Targets = {
 	Vector3.new(-1792, 175, 2769),
 }
 
-local VERSION = "v0.8"
+local VERSION = "v0.81"
 
 --// Farm Area
 local FARM_CENTER = Vector3.new(-1715, 173, 2798)
@@ -1380,12 +1380,12 @@ RunService.Heartbeat:Connect(function()
 		return
 	end
 
-	if not BlockValue then
-		BlockValue = Replicated:FindFirstChild("BlockValue", true) :: RemoteEvent
-		if BlockValue then
-			BlockValue:FireServer(true)
-		end
-	end
+	-- if not BlockValue then
+	-- 	BlockValue = Replicated:FindFirstChild("BlockValue", true) :: RemoteEvent
+	-- 	if BlockValue then
+	-- 		BlockValue:FireServer(true)
+	-- 	end
+	-- end
 
 	local Sword = Character:FindFirstChild("Sword")
 	if not Sword or (Sword and not Sword:FindFirstChild("MainWeld", true)) then
