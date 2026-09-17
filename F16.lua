@@ -26,7 +26,7 @@ local Targets = {
 	Vector3.new(-1792, 175, 2769),
 }
 
-local VERSION = "v0.9"
+local VERSION = "v0.91"
 
 --// Farm Area
 local FARM_CENTER = Vector3.new(-1715, 173, 2798)
@@ -60,7 +60,7 @@ local DEATH_COUNT           = 0
 --// Retreat
 local RETREAT_DISTANCE   = 30
 local RETREAT_DIRECTIONS = 16
-local RETREATING = false
+local RETREATING         = false
 
 --// Player Combat
 local ATTACK_INTERVAL  = 0.2
@@ -1924,18 +1924,15 @@ RunService.Heartbeat:Connect(function()
 	local MainWeld = Sword:FindFirstChild("MainWeld", true)
 
 	--// Emergency Retreat
+	if RETREATING and Humanoid.Health >= Humanoid.MaxHealth * 0.8  then
+		RETREATING = false
+	end
 	if (Humanoid.Health <= Humanoid.MaxHealth * 0.4 or RETREATING) then
-		if RETREATING and Humanoid.Health >= Humanoid.MaxHealth * 0.8  then
-			RETREATING = false
-		end
 		local UseConsumable = Replicated:FindFirstChild("UseConsumable", true)
 		local PlayerStats   = Player:FindFirstChild("PlayerStats")
 
 		if InputBindableFunction
-			and (
-				Equipped
-					or (MainWeld.Part1 and MainWeld.Part1.Name ~= "UpperTorso")
-			)
+			and ( Equipped or (MainWeld.Part1 and MainWeld.Part1.Name ~= "UpperTorso") )
 		then
 			Equipped = false
 			InputBindableFunction:Invoke("EquipButton", Enum.UserInputState.Begin)
