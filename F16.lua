@@ -24,7 +24,7 @@ local Targets = {
 	Vector3.new(-1792, 175, 2769),
 }
 
-local VERSION = "v0.69"
+local VERSION = "v0.7"
 
 --// Farm Area
 local FARM_CENTER = Vector3.new(-1715, 173, 2798)
@@ -42,7 +42,7 @@ local currentTarget = 1
 local Enabled       = true
 
 local Equipped       = false
-local AttackInterval = 0.25
+local AttackInterval = 0.2
 local LastAttack     = 0
 local TargetCurrency = "Golden Shell"
 local LastInventory  = nil
@@ -922,15 +922,25 @@ RunService.Heartbeat:Connect(function()
 		local UseConsumable = Replicated:FindFirstChild("UseConsumable", true)
 		local PlayerStats   = Player:FindFirstChild("PlayerStats")
 
-		if UseConsumable and PlayerStats then
-			local LastConsumed = PlayerStats:FindFirstChild("LastConsumed")
+		local Sword = Character:FindFirstChild("Sword")
 
-			if LastConsumed
-				and LastConsumed.Value ~= ""
-				and os.clock() - LastConsumeStamp >= ConsumeCooldown
-			then
-				LastConsumeStamp = os.clock()
-				UseConsumable:InvokeServer(LastConsumed.Value)
+		if Sword then
+			local MainWeld = Sword:FindFirstChild("MainWeld", true)
+			if Equipped or (MainWeld and MainWeld.Part1 and MainWeld.Part1.Name ~= "UpperTorso") then
+				Equipped = false
+				InputBindableFunction:Invoke("EquipButton", Enum.UserInputState.Begin)
+				return
+			end
+			if UseConsumable and PlayerStats and not Equipped then
+				local LastConsumed = PlayerStats:FindFirstChild("LastConsumed")
+	
+				if LastConsumed
+					and LastConsumed.Value ~= ""
+					and os.clock() - LastConsumeStamp >= ConsumeCooldown
+				then
+					LastConsumeStamp = os.clock()
+					UseConsumable:InvokeServer(LastConsumed.Value)
+				end
 			end
 		end
 
