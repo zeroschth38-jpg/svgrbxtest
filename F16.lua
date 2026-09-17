@@ -24,7 +24,7 @@ local Targets = {
 	Vector3.new(-1792, 175, 2769),
 }
 
-local VERSION = "v0.72"
+local VERSION = "v0.73"
 
 --// Farm Area
 local FARM_CENTER = Vector3.new(-1715, 173, 2798)
@@ -53,8 +53,8 @@ local MAX_SERVER_AGE = 8 * 60 * 60
 
 --// Combat
 local TARGET_ENTITY_PRIORITY = {
-	-- [1] = "Leader Goblin",
 	[1] = "Goblin",
+	[2] = "Leader Goblin",
 }
 
 local REACH_DISTANCE        = 5
@@ -69,8 +69,10 @@ local RETREAT_DIRECTIONS = 16
 
 local ClosestTarget = nil
 
-local ConsumeCooldown  = 30
+local ConsumeCooldown  = 10
 local LastConsumeStamp = 0
+
+local InputBindableFunction = nil
 
 local BlockCache = {}
 
@@ -92,21 +94,21 @@ local function updateCharacter()
 	Humanoid:SetStateEnabled(Enum.HumanoidStateType.Physics, false)
 	Humanoid:SetStateEnabled(Enum.HumanoidStateType.Climbing, false)
 end
-
 updateCharacter()
 
 Player.CharacterAdded:Connect(function()
 	task.wait()
 
+	DEATH_COUNT += 1
 	currentTarget = 1
 	ClosestTarget = nil
-
+	InputBindableFunction = nil
 	Equipped = false
+
 	task.delay(0.5, function()
 		Equipped = false
 	end)
 
-	DEATH_COUNT += 1
 	updateCharacter()
 end)
 
@@ -916,6 +918,16 @@ RunService.Heartbeat:Connect(function()
 		return
 	end
 
+	if not InputBindableFunction then
+		InputBindableFunction = PlayerGui:FindFirstChild("InputBindableFunction", true) :: BindableFunction
+		return
+	end
+
+	local Sword = Character:FindFirstChild("Sword")
+	if not Sword then
+		return
+	end
+
 	--// Emergency Retreat
 	if Humanoid.Health <= Humanoid.MaxHealth * 0.4 then
 		-- ClosestTarget = nil
@@ -925,24 +937,21 @@ RunService.Heartbeat:Connect(function()
 
 		local Sword = Character:FindFirstChild("Sword")
 
-		if Sword then
-			local MainWeld = Sword:FindFirstChild("MainWeld", true)
-			local InputBindableFunction = PlayerGui:FindFirstChild("InputBindableFunction", true) :: BindableFunction
-			if InputBindableFunction and (Equipped or (MainWeld and MainWeld.Part1 and MainWeld.Part1.Name ~= "UpperTorso")) then
-				Equipped = false
-				InputBindableFunction:Invoke("EquipButton", Enum.UserInputState.Begin)
-				return
-			end
-			if UseConsumable and PlayerStats and not Equipped then
-				local LastConsumed = PlayerStats:FindFirstChild("LastConsumed")
+		local MainWeld = Sword:FindFirstChild("MainWeld", true)
+		if InputBindableFunction and (Equipped or (MainWeld and MainWeld.Part1 and MainWeld.Part1.Name ~= "UpperTorso")) then
+			Equipped = false
+			InputBindableFunction:Invoke("EquipButton", Enum.UserInputState.Begin)
+			return
+		end
+		if UseConsumable and PlayerStats and not Equipped then
+			local LastConsumed = PlayerStats:FindFirstChild("LastConsumed")
 	
-				if LastConsumed
-					and LastConsumed.Value ~= ""
-					and os.clock() - LastConsumeStamp >= ConsumeCooldown
-				then
-					LastConsumeStamp = os.clock()
-					UseConsumable:InvokeServer(LastConsumed.Value)
-				end
+			if LastConsumed
+				and LastConsumed.Value ~= ""
+				and os.clock() - LastConsumeStamp >= ConsumeCooldown
+			then
+				LastConsumeStamp = os.clock()
+				UseConsumable:InvokeServer(LastConsumed.Value)
 			end
 		end
 
@@ -1052,44 +1061,30 @@ RunService.Heartbeat:Connect(function()
 
 	--// Combat
 	if currentTarget == #Targets then
-		local InputBindableFunction = PlayerGui:FindFirstChild("InputBindableFunction", true) :: BindableFunction
-		if InputBindableFunction then
-			if ClosestTarget then
-				local Sword = Character:FindFirstChild("Sword")
+		if ClosestTarget then
+			local MainWeld = Sword:FindFirstChild("MainWeld", true)
 
-				if Sword then
-					local MainWeld = Sword:FindFirstChild("MainWeld", true)
+			if not Equipped or (MainWeld and MainWeld.Part1 and MainWeld.Part1.Name == "UpperTorso") then
+				Equipped = true
+				InputBindableFunction:Invoke("EquipButton", Enum.UserInputState.Begin)
+				warn("SHOULD EQUIP SWORD NOW!")
+				return
+			end
 
-					if not Equipped or (MainWeld and MainWeld.Part1 and MainWeld.Part1.Name == "UpperTorso") then
-						Equipped = true
-						InputBindableFunction:Invoke("EquipButton", Enum.UserInputState.Begin)
-						warn("SHOULD EQUIP SWORD NOW!")
-						return
-					end
-
-					local MobHumanoid = ClosestTarget:FindFirstChildOfClass("Humanoid")
-					local MobRoot     = ClosestTarget:FindFirstChild("HumanoidRootPart")
-
-					if MobHumanoid and MobRoot and MobHumanoid.Health > 0 then
-						local Distance = (RootPart.Position - MobRoot.Position).Magnitude
-
-						if Distance <= GOBLIN_REACH_DISTANCE then
-							if os.clock() - LastAttack >= AttackInterval then
-								InputBindableFunction:Invoke("AttackButton", Enum.UserInputState.Begin)
-								InputBindableFunction:Invoke("SkillButton", Enum.UserInputState.Begin)
-
-								LastAttack = os.clock()
-							end
-						end
+			local MobHumanoid = ClosestTarget:FindFirstChildOfClass("Humanoid")
+			local MobRoot     = ClosestTarget:FindFirstChild("HumanoidRootPart")
+			if MobHumanoid and MobRoot and MobHumanoid.Health > 0 then
+				local Distance = (RootPart.Position - MobRoot.Position).Magnitude
+				if Distance <= GOBLIN_REACH_DISTANCE then
+					if os.clock() - LastAttack >= AttackInterval then
+						InputBindableFunction:Invoke("AttackButton", Enum.UserInputState.Begin)
+						InputBindableFunction:Invoke("SkillButton", Enum.UserInputState.Begin)
+						LastAttack = os.clock()
 					end
 				end
 			end
 		end
 	else
-		local InputBindableFunction = PlayerGui:FindFirstChild("InputBindableFunction", true) :: BindableFunction
-
-		if InputBindableFunction then
-			InputBindableFunction:Invoke("InteractButton", Enum.UserInputState.Begin)
-		end
+		InputBindableFunction:Invoke("InteractButton", Enum.UserInputState.Begin)
 	end
 end)
