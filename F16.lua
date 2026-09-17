@@ -26,7 +26,7 @@ local Targets = {
 	Vector3.new(-1792, 175, 2769),
 }
 
-local VERSION = "v0.87"
+local VERSION = "v0.88"
 
 --// Farm Area
 local FARM_CENTER = Vector3.new(-1715, 173, 2798)
@@ -418,6 +418,15 @@ local function CreateStat(Name, DefaultText, Order)
 	return Value
 end
 
+local function neededExp(lvl)
+	lvl = lvl-1
+	local total = 9
+	for i=1,lvl do
+		total = total + (6 * (i + 2))
+	end
+	return total
+end
+
 local PlaceIDLabel       = CreateStat("PLACE ID", tostring(game.PlaceId), 1)
 local WalkSpeedLabel     = CreateStat("WALKSPEED", "0", 2)
 local WayPointLabel      = CreateStat("WAYPOINT", "0/" .. #Targets, 3)
@@ -425,6 +434,7 @@ local EventCurrencyLabel = CreateStat("EVENT CURRENCY", "0", 4)
 local ServerAgeLabel     = CreateStat("SERVER AGE", "00:00:00", 5)
 local PositionLabel      = CreateStat("POSITION", "--", 6)
 local DeathLabel         = CreateStat("DEATH", "0", 7)
+local ExpLabel           = CreateStat("EXP", "0/0", 8)
 
 UpdateStatsLayout()
 
@@ -1313,6 +1323,13 @@ local function updateEventCurrency()
 
 	EventCurrency = Amount
 	EventCurrencyLabel.Text = EventCurrency
+
+	local PlayerLvl = PlayerStats:FindFirstChild("Level")
+	local PlayerExp = PlayerStats:FindFirstChild("Exp")
+	if not PlayerLvl or not PlayerExp then
+		return
+	end
+	ExpLabel.Text = PlayerExp.Value.."/"..neededExp(PlayerLvl.Value)
 end
 
 local function updateServerAge()
