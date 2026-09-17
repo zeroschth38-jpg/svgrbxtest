@@ -26,7 +26,7 @@ local Targets = {
 	Vector3.new(-1792, 175, 2769),
 }
 
-local VERSION = "v0.91"
+local VERSION = "v0.92"
 
 --// Farm Area
 local FARM_CENTER = Vector3.new(-1715, 173, 2798)
@@ -52,7 +52,7 @@ local TARGET_ENTITY_PRIORITY = {
 local ClosestTarget = nil
 
 local REACH_DISTANCE        = 5
-local GOBLIN_REACH_DISTANCE = 7
+local GOBLIN_REACH_DISTANCE = 8
 local JUMP_HEIGHT           = 3
 local BLOCK_COOLDOWN        = 3
 local DEATH_COUNT           = 0
@@ -65,6 +65,8 @@ local RETREATING         = false
 --// Player Combat
 local ATTACK_INTERVAL  = 0.2
 local LAST_ATTACK_TIME = 0
+local SKILL_INTERVAL   = 3
+local LAST_SKILL_TIME  = 0
 
 --// Potion Consume
 local CONSUME_INTERVAL  = 10
@@ -2069,15 +2071,21 @@ RunService.Heartbeat:Connect(function()
 			if MobHumanoid and MobRoot and MobHumanoid.Health > 0 then
 				local Distance = (RootPart.Position - MobRoot.Position).Magnitude
 
-				InputBindableFunction:Invoke(
-					"AttackButton",
-					Enum.UserInputState.Begin
-				)
-					
 				-- if Distance <= GOBLIN_REACH_DISTANCE then
 				if Distance <= (PlayerOffset and PlayerOffset.Value + 2 or GOBLIN_REACH_DISTANCE) then
+					--// ATTACK
 					if now - LAST_ATTACK_TIME >= ATTACK_INTERVAL then
 						LAST_ATTACK_TIME = now
+
+						InputBindableFunction:Invoke(
+							"AttackButton",
+							Enum.UserInputState.Begin
+						)
+					end
+
+					--// SKILL
+					if now - LAST_SKILL_TIME >= SKILL_INTERVAL then
+						LAST_SKILL_TIME = now
 
 						InputBindableFunction:Invoke(
 							"SkillButton",
