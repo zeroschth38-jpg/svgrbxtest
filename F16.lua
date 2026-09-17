@@ -24,7 +24,7 @@ local Targets = {
 	Vector3.new(-1792, 175, 2769),
 }
 
-local VERSION = "v0.7"
+local VERSION = "v0.71"
 
 --// Farm Area
 local FARM_CENTER = Vector3.new(-1715, 173, 2798)
@@ -926,7 +926,8 @@ RunService.Heartbeat:Connect(function()
 
 		if Sword then
 			local MainWeld = Sword:FindFirstChild("MainWeld", true)
-			if Equipped or (MainWeld and MainWeld.Part1 and MainWeld.Part1.Name ~= "UpperTorso") then
+			local InputBindableFunction = PlayerGui:FindFirstChild("InputBindableFunction", true) :: BindableFunction
+			if InputBindableFunction and (Equipped or (MainWeld and MainWeld.Part1 and MainWeld.Part1.Name ~= "UpperTorso")) then
 				Equipped = false
 				InputBindableFunction:Invoke("EquipButton", Enum.UserInputState.Begin)
 				return
@@ -1052,7 +1053,6 @@ RunService.Heartbeat:Connect(function()
 
 	--// Combat
 	if currentTarget == #Targets then
-		local InputBindableFunction = PlayerGui:FindFirstChild("InputBindableFunction", true) :: BindableFunction
 
 		if InputBindableFunction then
 			if ClosestTarget then
