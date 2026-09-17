@@ -26,7 +26,7 @@ local Targets = {
 	Vector3.new(-1792, 175, 2769),
 }
 
-local VERSION = "v0.8"
+local VERSION = "v0.73"
 
 --// Farm Area
 local FARM_CENTER = Vector3.new(-1715, 173, 2798)
@@ -256,7 +256,7 @@ ContentPadding.Parent = Content
 
 local ContentLayout = Instance.new("UIListLayout")
 ContentLayout.SortOrder = Enum.SortOrder.LayoutOrder
-ContentLayout.Padding = UDim.new(0, 1.5)
+ContentLayout.Padding = UDim.new(0, 5)
 ContentLayout.Parent = Content
 
 --// Main Toggle
@@ -705,11 +705,11 @@ local function updateBlockButton()
 	if BlockEnabled then
 		BlockToggle.Text = "●  AUTO BLOCKING  •  ENABLED"
 		BlockToggle.BackgroundColor3 = Color3.fromRGB(60, 125, 50)
-		BlockToggle.TextColor3 = Color3.fromRGB(190, 240, 205)
+		--BlockToggle.TextColor3 = Color3.fromRGB(190, 240, 205)
 	else
 		BlockToggle.Text = "●  AUTO BLOCKING  •  DISABLED"
-		BlockToggle.BackgroundColor3 = Color3.fromRGB(77, 43, 47)
-		BlockToggle.TextColor3 = Color3.fromRGB(255, 65, 65)
+		BlockToggle.BackgroundColor3 = Color3.fromRGB(255, 65, 65)
+		--BlockToggle.TextColor3 = Color3.fromRGB(255, 65, 65)
 	end
 end
 
