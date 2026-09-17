@@ -26,7 +26,7 @@ local Targets = {
 	Vector3.new(-1792, 175, 2769),
 }
 
-local VERSION = "v0.92"
+local VERSION = "v0.93"
 
 --// Farm Area
 local FARM_CENTER = Vector3.new(-1715, 173, 2798)
@@ -1933,6 +1933,9 @@ RunService.Heartbeat:Connect(function()
 		local UseConsumable = Replicated:FindFirstChild("UseConsumable", true)
 		local PlayerStats   = Player:FindFirstChild("PlayerStats")
 
+		DoJump()
+		RetreatFromGoblins()
+
 		if InputBindableFunction
 			and ( Equipped or (MainWeld.Part1 and MainWeld.Part1.Name ~= "UpperTorso") )
 		then
@@ -1953,8 +1956,6 @@ RunService.Heartbeat:Connect(function()
 			end
 		end
 
-		DoJump()
-		RetreatFromGoblins()
 		return
 	end
 
