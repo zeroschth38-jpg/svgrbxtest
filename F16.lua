@@ -26,7 +26,7 @@ local Targets = {
 	Vector3.new(-1792, 175, 2769),
 }
 
-local VERSION = "v0.88"
+local VERSION = "v0.89"
 
 --// Farm Area
 local FARM_CENTER = Vector3.new(-1715, 173, 2798)
@@ -1325,7 +1325,7 @@ local function updateEventCurrency()
 	EventCurrencyLabel.Text = EventCurrency
 
 	local PlayerLvl = PlayerStats:FindFirstChild("Level")
-	local PlayerExp = PlayerStats:FindFirstChild("Exp")
+	local PlayerExp = PlayerStats:FindFirstChild("EXP")
 	if not PlayerLvl or not PlayerExp then
 		return
 	end
