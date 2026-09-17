@@ -24,7 +24,7 @@ local Targets = {
 	Vector3.new(-1792, 175, 2769),
 }
 
-local VERSION = "v0.71"
+local VERSION = "v0.72"
 
 --// Farm Area
 local FARM_CENTER = Vector3.new(-1715, 173, 2798)
@@ -1053,7 +1053,7 @@ RunService.Heartbeat:Connect(function()
 
 	--// Combat
 	if currentTarget == #Targets then
-
+		local InputBindableFunction = PlayerGui:FindFirstChild("InputBindableFunction", true) :: BindableFunction
 		if InputBindableFunction then
 			if ClosestTarget then
 				local Sword = Character:FindFirstChild("Sword")
