@@ -26,7 +26,7 @@ local Targets = {
 	Vector3.new(-1792, 175, 2769),
 }
 
-local VERSION = "v0.96"
+local VERSION = "v0.97"
 
 --// Farm Area
 local FARM_CENTER = Vector3.new(-1715, 173, 2798)
@@ -1816,7 +1816,7 @@ local function RetreatFromGoblins()
 	end
 
 	if RootPart and RetreatDirection.Magnitude > 0 then
-		Humanoid:MoveTo(RetreatDirection)
+		Humanoid:MoveTo(RetreatDirection or Vector3.zero)
 	end
 end
 
