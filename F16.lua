@@ -2052,7 +2052,7 @@ RunService.Heartbeat:Connect(function()
 				local Distance = (RootPart.Position - MobRoot.Position).Magnitude
 
 				-- if Distance <= GOBLIN_REACH_DISTANCE then
-				if Distance <= (PlayerOffset and PlayerOffset.Value + 2 or GOBLIN_REACH_DISTANCE) then
+				if Distance <= (PlayerOffset and PlayerOffset.Value + 1 or GOBLIN_REACH_DISTANCE) then
 					if now - LAST_ATTACK_TIME >= ATTACK_INTERVAL then
 						LAST_ATTACK_TIME = now
 
