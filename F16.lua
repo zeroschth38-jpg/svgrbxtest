@@ -26,7 +26,7 @@ local Targets = {
 	Vector3.new(-1792, 175, 2769),
 }
 
-local VERSION = "v0.73"
+local VERSION = "v0.8"
 
 --// Farm Area
 local FARM_CENTER = Vector3.new(-1715, 173, 2798)
@@ -131,230 +131,389 @@ local ScreenGui = Instance.new("ScreenGui")
 ScreenGui.Name = "AutoFarmUI"
 ScreenGui.ResetOnSpawn = false
 ScreenGui.IgnoreGuiInset = true
+ScreenGui.ScreenInsets = Enum.ScreenInsets.DeviceSafeInsets
 ScreenGui.Parent = PlayerGui
 
 if game.PlaceId == TargetPlaceID then
 	ScreenGui.DisplayOrder = 1
 end
 
+--// Theme
+local UI_PANEL   = Color3.fromRGB(22, 23, 29)
+local UI_SURFACE = Color3.fromRGB(29, 31, 38)
+local UI_HOVER   = Color3.fromRGB(38, 40, 48)
+local UI_BORDER  = Color3.fromRGB(55, 58, 68)
+local UI_TEXT    = Color3.fromRGB(238, 239, 244)
+local UI_MUTED   = Color3.fromRGB(145, 149, 162)
+local UI_ACCENT  = Color3.fromRGB(112, 126, 255)
+
 local Panel = Instance.new("Frame")
 Panel.Name = "Panel"
-Panel.Size = UDim2.new(0.30, 0, 0.62, 0)
-Panel.Position = UDim2.new(0.67, 0, 0.19, 0)
-Panel.BackgroundColor3 = Color3.fromRGB(245, 245, 245)
-Panel.BackgroundTransparency = 0.1
+Panel.AnchorPoint = Vector2.new(1, 0.5)
+Panel.Size = UDim2.fromScale(0.25, 0.70)
+Panel.Position = UDim2.fromScale(0.95, 0.6)
+Panel.BackgroundColor3 = UI_PANEL
 Panel.BorderSizePixel = 0
+Panel.ClipsDescendants = true
 Panel.Parent = ScreenGui
 
+--// Panel uses Scale only; all child layout is Scale based
 local PanelCorner = Instance.new("UICorner")
-PanelCorner.CornerRadius = UDim.new(0.01, 0)
+PanelCorner.CornerRadius = UDim.new(0, 1)
 PanelCorner.Parent = Panel
 
 local PanelStroke = Instance.new("UIStroke")
-PanelStroke.Color = Color3.fromRGB(70, 70, 70)
+PanelStroke.Color = UI_BORDER
 PanelStroke.Thickness = 1
-PanelStroke.Transparency = 0.2
+PanelStroke.Transparency = 0.1
 PanelStroke.Parent = Panel
 
-local Padding = Instance.new("UIPadding")
-Padding.PaddingTop    = UDim.new(0.04, 0)
-Padding.PaddingBottom = UDim.new(0.04, 0)
-Padding.PaddingLeft   = UDim.new(0.06, 0)
-Padding.PaddingRight  = UDim.new(0.06, 0)
-Padding.Parent = Panel
+--// Header
+local Header = Instance.new("Frame")
+Header.Name = "Header"
+Header.Size = UDim2.fromScale(1, 0.1346)
+Header.BackgroundColor3 = UI_SURFACE
+Header.BorderSizePixel = 0
+Header.Parent = Panel
 
-local Layout = Instance.new("UIListLayout")
-Layout.SortOrder = Enum.SortOrder.LayoutOrder
-Layout.Padding = UDim.new(0, 1)
-Layout.HorizontalAlignment = Enum.HorizontalAlignment.Center
-Layout.VerticalAlignment = Enum.VerticalAlignment.Center
-Layout.Parent = Panel
+local HeaderCorner = Instance.new("UICorner")
+HeaderCorner.CornerRadius = UDim.new(0.25, 0)
+HeaderCorner.Parent = Header
 
---// Title
+local HeaderMask = Instance.new("Frame")
+HeaderMask.Size = UDim2.fromScale(1, 0.25)
+HeaderMask.Position = UDim2.fromScale(0, 0, 1, -0.25)
+HeaderMask.BackgroundColor3 = UI_SURFACE
+HeaderMask.BorderSizePixel = 0
+HeaderMask.Parent = Header
+
+local Accent = Instance.new("Frame")
+Accent.Size = UDim2.fromScale(0.0103, 0.6667)
+Accent.Position = UDim2.fromScale(0.0359, 0.1667)
+Accent.BackgroundColor3 = UI_ACCENT
+Accent.BorderSizePixel = 0
+Accent.Parent = Header
+
+local AccentCorner = Instance.new("UICorner")
+AccentCorner.CornerRadius = UDim.new(1, 0)
+AccentCorner.Parent = Accent
+
 local Title = Instance.new("TextLabel")
 Title.Name = "Title"
-Title.LayoutOrder = 1
-Title.Size = UDim2.new(1, 0, 0.10, 0)
+Title.Size = UDim2.fromScale(0.8205, 0.3889)
+Title.Position = UDim2.fromScale(0.0769, 0.1528)
 Title.BackgroundTransparency = 1
-Title.Text = "AUTO FARMING (" .. MarketplaceService:GetProductInfoAsync(TargetPlaceID).Name.. ") " .. VERSION
-Title.TextColor3 = Color3.fromRGB(40, 40, 40)
+Title.Text = "AUTO FARMING"
+Title.TextColor3 = UI_TEXT
 Title.TextScaled = true
 Title.Font = Enum.Font.GothamBold
 Title.TextXAlignment = Enum.TextXAlignment.Left
-Title.Parent = Panel
+Title.TextTruncate = Enum.TextTruncate.AtEnd
+Title.Parent = Header
 
---// Status
+local PlaceNameLabel = Instance.new("TextLabel")
+PlaceNameLabel.Name = "PlaceName"
+PlaceNameLabel.Size = UDim2.fromScale(0.8205, 0.25)
+PlaceNameLabel.Position = UDim2.fromScale(0.0769, 0.5556)
+PlaceNameLabel.BackgroundTransparency = 1
+PlaceNameLabel.Text = MarketplaceService:GetProductInfoAsync(TargetPlaceID).Name .. "  •  " .. VERSION
+PlaceNameLabel.TextColor3 = UI_MUTED
+PlaceNameLabel.TextScaled = true
+PlaceNameLabel.Font = Enum.Font.GothamMedium
+PlaceNameLabel.TextXAlignment = Enum.TextXAlignment.Left
+PlaceNameLabel.TextTruncate = Enum.TextTruncate.AtEnd
+PlaceNameLabel.Parent = Header
+
+local DragHint = Instance.new("TextLabel")
+DragHint.Size = UDim2.fromScale(0.0821, 0.3889)
+DragHint.Position = UDim2.fromScale(0.8897, 0.3056)
+DragHint.BackgroundTransparency = 1
+DragHint.Text = "⋮⋮"
+DragHint.TextColor3 = UI_MUTED
+DragHint.TextScaled = true
+DragHint.Font = Enum.Font.GothamBold
+DragHint.Parent = Header
+
+--// Content
+local Content = Instance.new("ScrollingFrame")
+Content.Name = "Content"
+Content.Size = UDim2.fromScale(0.9385, 0.843)
+Content.Position = UDim2.fromScale(0.0308, 0.1458)
+Content.BackgroundTransparency = 1
+Content.BorderSizePixel = 0
+Content.ScrollBarThickness = 3
+Content.ScrollBarImageColor3 = UI_BORDER
+Content.CanvasSize = UDim2.fromScale(0, 0)
+Content.AutomaticCanvasSize = Enum.AutomaticSize.Y
+Content.ScrollingDirection = Enum.ScrollingDirection.Y
+Content.Parent = Panel
+
+local ContentPadding = Instance.new("UIPadding")
+ContentPadding.PaddingLeft = UDim.new(0.005, 0)
+ContentPadding.PaddingRight = UDim.new(0.005, 0)
+ContentPadding.PaddingBottom = UDim.new(0, 0)
+ContentPadding.Parent = Content
+
+local ContentLayout = Instance.new("UIListLayout")
+ContentLayout.SortOrder = Enum.SortOrder.LayoutOrder
+ContentLayout.Padding = UDim.new(0, 1.5)
+ContentLayout.Parent = Content
+
+--// Main Toggle
+local Toggle = Instance.new("TextButton")
+Toggle.Name = "Toggle"
+Toggle.LayoutOrder = 1
+Toggle.Size = UDim2.fromScale(0.9949, 0.0822)
+Toggle.BorderSizePixel = 0
+Toggle.TextColor3 = UI_TEXT
+Toggle.TextScaled = true
+Toggle.Font = Enum.Font.GothamBold
+Toggle.AutoButtonColor = false
+Toggle.Parent = Content
+
+local ToggleCorner = Instance.new("UICorner")
+ToggleCorner.CornerRadius = UDim.new(0.205, 0)
+ToggleCorner.Parent = Toggle
+
+local ToggleStroke = Instance.new("UIStroke")
+ToggleStroke.Color = UI_BORDER
+ToggleStroke.Thickness = 1
+ToggleStroke.Transparency = 0.3
+ToggleStroke.Parent = Toggle
+
 local Status = Instance.new("TextLabel")
 Status.Name = "Status"
 Status.LayoutOrder = 2
-Status.Size = UDim2.new(1, 0, 0.06, 0)
+Status.Size = UDim2.fromScale(0.9949, 0.0374)
 Status.BackgroundTransparency = 1
-Status.TextColor3 = Color3.fromRGB(150, 150, 158)
-Status.TextSize = 12
+Status.TextColor3 = UI_MUTED
+Status.TextScaled = true
 Status.Font = Enum.Font.GothamMedium
 Status.TextXAlignment = Enum.TextXAlignment.Left
-Status.Parent = Panel
+Status.Parent = Content
 
---// Toggle
-local Toggle = Instance.new("TextButton")
-Toggle.Name = "Toggle"
-Toggle.LayoutOrder = 3
-Toggle.Size = UDim2.new(1, 0, 0.09, 0)
-Toggle.BorderSizePixel = 0
-Toggle.TextColor3 = Color3.fromRGB(255, 255, 255)
-Toggle.TextSize = 13
-Toggle.Font = Enum.Font.GothamBold
-Toggle.AutoButtonColor = false
-Toggle.Parent = Panel
+--// Live Status
+local StatsCollapsed = false
 
-local ToggleCorner = Instance.new("UICorner")
-ToggleCorner.CornerRadius = UDim.new(0.18, 0)
-ToggleCorner.Parent = Toggle
+local StatsHeader = Instance.new("TextButton")
+StatsHeader.Name = "StatsHeader"
+StatsHeader.LayoutOrder = 3
+StatsHeader.Size = UDim2.fromScale(0.9949, 0.0374)
+StatsHeader.BackgroundTransparency = 1
+StatsHeader.Text = "LIVE STATUS  ▼"
+StatsHeader.TextColor3 = UI_TEXT
+StatsHeader.TextScaled = true
+StatsHeader.Font = Enum.Font.GothamBold
+StatsHeader.TextXAlignment = Enum.TextXAlignment.Left
+StatsHeader.AutoButtonColor = false
+StatsHeader.Parent = Content
 
---// Place ID
-local PlaceIDLabel = Instance.new("TextLabel")
-PlaceIDLabel.Name = "PlaceId"
-PlaceIDLabel.LayoutOrder = 4
-PlaceIDLabel.Size = UDim2.new(1, 0, 0.055, 0)
-PlaceIDLabel.BackgroundTransparency = 1
-PlaceIDLabel.TextColor3 = Color3.fromRGB(40, 40, 40)
-PlaceIDLabel.TextSize = 12
-PlaceIDLabel.Font = Enum.Font.GothamMedium
-PlaceIDLabel.TextXAlignment = Enum.TextXAlignment.Left
-PlaceIDLabel.TextTruncate = Enum.TextTruncate.AtEnd
-PlaceIDLabel.Parent = Panel
+local Stats = Instance.new("Frame")
+Stats.Name = "Stats"
+Stats.LayoutOrder = 4
+Stats.Size = UDim2.fromScale(0.9949, 0.2766)
+Stats.BackgroundTransparency = 1
+Stats.Parent = Content
 
---// Position
-local PositionLabel = Instance.new("TextLabel")
-PositionLabel.Name = "Position"
-PositionLabel.LayoutOrder = 5
-PositionLabel.Size = UDim2.new(1, 0, 0.055, 0)
-PositionLabel.BackgroundTransparency = 1
-PositionLabel.TextColor3 = Color3.fromRGB(40, 40, 40)
-PositionLabel.TextSize = 12
-PositionLabel.Font = Enum.Font.GothamMedium
-PositionLabel.TextXAlignment = Enum.TextXAlignment.Left
-PositionLabel.TextTruncate = Enum.TextTruncate.AtEnd
-PositionLabel.Parent = Panel
+local StatsGrid = Instance.new("UIGridLayout")
+StatsGrid.CellSize = UDim2.fromScale(0.5, 0.3108)
+StatsGrid.CellPadding = UDim2.fromScale(0, 0.005)
+StatsGrid.SortOrder = Enum.SortOrder.LayoutOrder
+StatsGrid.Parent = Stats
 
---// WalkSpeed
-local WalkSpeedLabel = Instance.new("TextLabel")
-WalkSpeedLabel.Name = "WalkSpeed"
-WalkSpeedLabel.LayoutOrder = 6
-WalkSpeedLabel.Size = UDim2.new(1, 0, 0.055, 0)
-WalkSpeedLabel.BackgroundTransparency = 1
-WalkSpeedLabel.Text = "WalkSpeed   0"
-WalkSpeedLabel.TextColor3 = Color3.fromRGB(40, 40, 40)
-WalkSpeedLabel.TextSize = 12
-WalkSpeedLabel.Font = Enum.Font.GothamMedium
-WalkSpeedLabel.TextXAlignment = Enum.TextXAlignment.Left
-WalkSpeedLabel.TextTruncate = Enum.TextTruncate.AtEnd
-WalkSpeedLabel.Parent = Panel
+local function UpdateStatsLayout()
+	if StatsCollapsed then
+		return
+	end
 
---// Waypoints
-local WayPointLabel = Instance.new("TextLabel")
-WayPointLabel.Name = "Waypoints"
-WayPointLabel.LayoutOrder = 7
-WayPointLabel.Size = UDim2.new(1, 0, 0.055, 0)
-WayPointLabel.BackgroundTransparency = 1
-WayPointLabel.Text = "Waypoints   0/" .. #Targets
-WayPointLabel.TextColor3 = Color3.fromRGB(40, 40, 40)
-WayPointLabel.TextSize = 12
-WayPointLabel.Font = Enum.Font.GothamMedium
-WayPointLabel.TextXAlignment = Enum.TextXAlignment.Left
-WayPointLabel.TextTruncate = Enum.TextTruncate.AtEnd
-WayPointLabel.Parent = Panel
+	local CardCount = 0
 
---// Event Currency
-local EventCurrencyLabel = Instance.new("TextLabel")
-EventCurrencyLabel.Name = "EventCurrency"
-EventCurrencyLabel.LayoutOrder = 8
-EventCurrencyLabel.Size = UDim2.new(1, 0, 0.055, 0)
-EventCurrencyLabel.BackgroundTransparency = 1
-EventCurrencyLabel.Text = "Event Currency   0"
-EventCurrencyLabel.TextColor3 = Color3.fromRGB(40, 40, 40)
-EventCurrencyLabel.TextSize = 12
-EventCurrencyLabel.Font = Enum.Font.GothamMedium
-EventCurrencyLabel.TextXAlignment = Enum.TextXAlignment.Left
-EventCurrencyLabel.TextTruncate = Enum.TextTruncate.AtEnd
-EventCurrencyLabel.Parent = Panel
+	for _, Child in Stats:GetChildren() do
+		if Child:IsA("GuiObject") and Child ~= StatsGrid then
+			CardCount += 1
+		end
+	end
 
---// Server Age
-local ServerAgeLabel = Instance.new("TextLabel")
-ServerAgeLabel.Name = "ServerAge"
-ServerAgeLabel.LayoutOrder = 9
-ServerAgeLabel.Size = UDim2.new(1, 0, 0.055, 0)
-ServerAgeLabel.BackgroundTransparency = 1
-ServerAgeLabel.Text = "Server Age   00:00:00"
-ServerAgeLabel.TextColor3 = Color3.fromRGB(40, 40, 40)
-ServerAgeLabel.TextSize = 12
-ServerAgeLabel.Font = Enum.Font.GothamMedium
-ServerAgeLabel.TextXAlignment = Enum.TextXAlignment.Left
-ServerAgeLabel.TextTruncate = Enum.TextTruncate.AtEnd
-ServerAgeLabel.Parent = Panel
+	if CardCount <= 0 then
+		Stats.Size = UDim2.fromScale(0.9949, 0)
+		return
+	end
+
+	local ColumnCount = 2
+	local RowCount    = math.ceil(CardCount / ColumnCount)
+
+	local BaseHeight = 0.095
+	local PaddingY   = 0.005
+
+	local StatsHeight = (BaseHeight * RowCount) + (PaddingY * (RowCount - 1))
+
+	Stats.Size = UDim2.fromScale(0.9949, StatsHeight)
+
+	local CellHeight = BaseHeight / StatsHeight
+
+	StatsGrid.CellSize    = UDim2.fromScale(0.5, CellHeight)
+	StatsGrid.CellPadding = UDim2.fromScale(0, PaddingY / StatsHeight)
+end
+
+local function SetStatsCollapsed(Collapsed)
+	StatsCollapsed = Collapsed
+
+	if StatsCollapsed then
+		StatsHeader.Text = "LIVE STATUS  ▶"
+		Stats.Visible = false
+	else
+		StatsHeader.Text = "LIVE STATUS  ▼"
+		Stats.Visible = true
+		UpdateStatsLayout()
+	end
+end
+
+StatsHeader.Activated:Connect(function()
+	SetStatsCollapsed(not StatsCollapsed)
+end)
+
+local function CreateStat(Name, DefaultText, Order)
+	local Card = Instance.new("Frame")
+	Card.Name = Name
+	Card.LayoutOrder = Order
+	Card.BackgroundColor3 = UI_SURFACE
+	Card.BorderSizePixel = 0
+	Card.Parent = Stats
+
+	local Corner = Instance.new("UICorner")
+	Corner.CornerRadius = UDim.new(0.02, 0)
+	Corner.Parent = Card
+
+	local Label = Instance.new("TextLabel")
+	Label.Name = "Label"
+	Label.Size = UDim2.fromScale(0.9158, 0.2826)
+	Label.Position = UDim2.fromScale(0.0421, 0.1087)
+	Label.BackgroundTransparency = 1
+	Label.Text = Name
+	Label.TextColor3 = UI_MUTED
+	Label.TextScaled = true
+	Label.Font = Enum.Font.GothamMedium
+	Label.TextXAlignment = Enum.TextXAlignment.Left
+	Label.Parent = Card
+
+	local Value = Instance.new("TextLabel")
+	Value.Name = "Value"
+	Value.Size = UDim2.fromScale(0.9158, 0.4130)
+	Value.Position = UDim2.fromScale(0.0421, 0.4348)
+	Value.BackgroundTransparency = 1
+	Value.Text = DefaultText
+	Value.TextColor3 = UI_TEXT
+	Value.TextScaled = true
+	Value.Font = Enum.Font.GothamBold
+	Value.TextXAlignment = Enum.TextXAlignment.Left
+	Value.TextTruncate = Enum.TextTruncate.AtEnd
+	Value.Parent = Card
+
+	return Value
+end
+
+local PlaceIDLabel       = CreateStat("PLACE ID", tostring(game.PlaceId), 1)
+local WalkSpeedLabel     = CreateStat("WALKSPEED", "0", 2)
+local WayPointLabel      = CreateStat("WAYPOINT", "0/" .. #Targets, 3)
+local EventCurrencyLabel = CreateStat("EVENT CURRENCY", "0", 4)
+local ServerAgeLabel     = CreateStat("SERVER AGE", "00:00:00", 5)
+local PositionLabel      = CreateStat("POSITION", "--", 6)
+local DeathLabel         = CreateStat("DEATH", "0", 7)
+
+UpdateStatsLayout()
+
+Stats.ChildAdded:Connect(function(Child)
+	if Child:IsA("GuiObject") and Child ~= StatsGrid then
+		task.defer(UpdateStatsLayout)
+	end
+end)
+
+Stats.ChildRemoved:Connect(function(Child)
+	if Child:IsA("GuiObject") and Child ~= StatsGrid then
+		task.defer(UpdateStatsLayout)
+	end
+end)
 
 --// Block Toggle
 local BlockToggle = Instance.new("TextButton")
 BlockToggle.Name = "BlockToggle"
-BlockToggle.LayoutOrder = 10
-BlockToggle.Size = UDim2.new(1, 0, 0.09, 0)
+BlockToggle.LayoutOrder = 5
+BlockToggle.Size = UDim2.fromScale(0.9949, 0.0785)
 BlockToggle.BorderSizePixel = 0
-BlockToggle.TextColor3 = Color3.fromRGB(255, 255, 255)
-BlockToggle.TextSize = 12
+BlockToggle.TextColor3 = UI_TEXT
+BlockToggle.TextScaled = true
 BlockToggle.Font = Enum.Font.GothamBold
 BlockToggle.AutoButtonColor = false
-BlockToggle.Parent = Panel
+BlockToggle.Parent = Content
 
 local BlockToggleCorner = Instance.new("UICorner")
-BlockToggleCorner.CornerRadius = UDim.new(0.18, 0)
+BlockToggleCorner.CornerRadius = UDim.new(0.205, 0)
 BlockToggleCorner.Parent = BlockToggle
 
---// Enemy Priority Header
+local BlockToggleStroke = Instance.new("UIStroke")
+BlockToggleStroke.Color = UI_BORDER
+BlockToggleStroke.Thickness = 1
+BlockToggleStroke.Transparency = 0.3
+BlockToggleStroke.Parent = BlockToggle
+
+--// Enemy Priority
 local PriorityHeader = Instance.new("TextLabel")
 PriorityHeader.Name = "PriorityHeader"
-PriorityHeader.LayoutOrder = 11
-PriorityHeader.Size = UDim2.new(1, 0, 0.06, 0)
+PriorityHeader.LayoutOrder = 6
+PriorityHeader.Size = UDim2.fromScale(0.9949, 0.0374)
 PriorityHeader.BackgroundTransparency = 1
 PriorityHeader.Text = "ENEMY PRIORITY"
-PriorityHeader.TextColor3 = Color3.fromRGB(40, 40, 40)
-PriorityHeader.TextSize = 11
+PriorityHeader.TextColor3 = UI_TEXT
+PriorityHeader.TextScaled = true
 PriorityHeader.Font = Enum.Font.GothamBold
 PriorityHeader.TextXAlignment = Enum.TextXAlignment.Left
-PriorityHeader.Parent = Panel
+PriorityHeader.Parent = Content
+
+local PriorityHint = Instance.new("TextLabel")
+PriorityHint.Name = "PriorityHint"
+PriorityHint.LayoutOrder = 7
+PriorityHint.Size = UDim2.fromScale(0.9949, 0.0318)
+PriorityHint.BackgroundTransparency = 1
+PriorityHint.Text = "▲ / ▼   Change targeting order"
+PriorityHint.TextColor3 = UI_MUTED
+PriorityHint.TextScaled = true
+PriorityHint.Font = Enum.Font.GothamMedium
+PriorityHint.TextXAlignment = Enum.TextXAlignment.Left
+PriorityHint.Parent = Content
 
 local PriorityRows = {}
 
 local function CreatePriorityRow(Index)
 	local Row = Instance.new("Frame")
 	Row.Name = "Priority" .. Index
-	Row.LayoutOrder = 12 + Index
-	Row.Size = UDim2.new(1, 0, 0.075, 0)
-	Row.BackgroundColor3 = Color3.fromRGB(200, 200, 200)
+	Row.LayoutOrder = 7 + Index
+	Row.Size = UDim2.fromScale(0.9949, 0.0822)
+	Row.BackgroundColor3 = UI_SURFACE
 	Row.BorderSizePixel = 0
-	Row.Parent = Panel
+	Row.Parent = Content
 
 	local RowCorner = Instance.new("UICorner")
-	RowCorner.CornerRadius = UDim.new(0.15, 0)
+	RowCorner.CornerRadius = UDim.new(0.02, 0)
 	RowCorner.Parent = Row
 
 	local NumberLabel = Instance.new("TextLabel")
 	NumberLabel.Name = "Number"
-	NumberLabel.Size = UDim2.new(0.12, 0, 1, 0)
-	NumberLabel.Position = UDim2.new(0.03, 0, 0, 0)
+	NumberLabel.Size = UDim2.fromScale(0.0872, 1)
+	NumberLabel.Position = UDim2.fromScale(0.0205, 0)
 	NumberLabel.BackgroundTransparency = 1
-	NumberLabel.TextColor3 = Color3.fromRGB(40, 40, 40)
-	NumberLabel.TextSize = 11
+	NumberLabel.TextColor3 = UI_ACCENT
+	NumberLabel.TextScaled = true
 	NumberLabel.Font = Enum.Font.GothamBold
-	NumberLabel.TextXAlignment = Enum.TextXAlignment.Left
+	NumberLabel.TextXAlignment = Enum.TextXAlignment.Center
 	NumberLabel.Parent = Row
 
 	local NameLabel = Instance.new("TextLabel")
 	NameLabel.Name = "Name"
-	NameLabel.Size = UDim2.new(0.52, 0, 1, 0)
-	NameLabel.Position = UDim2.new(0.14, 0, 0, 0)
+	NameLabel.Size = UDim2.fromScale(0.6718, 1)
+	NameLabel.Position = UDim2.fromScale(0.1231, 0)
 	NameLabel.BackgroundTransparency = 1
-	NameLabel.TextColor3 = Color3.fromRGB(40, 40, 40)
-	NameLabel.TextSize = 12
+	NameLabel.TextColor3 = UI_TEXT
+	NameLabel.TextSize = 11
 	NameLabel.Font = Enum.Font.GothamMedium
 	NameLabel.TextXAlignment = Enum.TextXAlignment.Left
 	NameLabel.TextTruncate = Enum.TextTruncate.AtEnd
@@ -362,38 +521,36 @@ local function CreatePriorityRow(Index)
 
 	local UpButton = Instance.new("TextButton")
 	UpButton.Name = "Up"
-	UpButton.Size = UDim2.new(0.14, 0, 0.70, 0)
-	UpButton.Position = UDim2.new(0.70, 0, 0.15, 0)
-	UpButton.BackgroundColor3 = Color3.fromRGB(150, 255, 0)
+	UpButton.Size = UDim2.fromScale(0.0821, 0.6818)
+	UpButton.Position = UDim2.fromScale(0.8051, 0.1591)
+	UpButton.BackgroundColor3 = UI_HOVER
 	UpButton.BorderSizePixel = 0
 	UpButton.Text = "▲"
-	UpButton.TextColor3 = Color3.fromRGB(250, 250, 255)
-	UpButton.TextSize = 11
+	UpButton.TextColor3 = UI_TEXT
 	UpButton.TextScaled = true
 	UpButton.Font = Enum.Font.GothamBold
 	UpButton.AutoButtonColor = true
 	UpButton.Parent = Row
 
 	local UpCorner = Instance.new("UICorner")
-	UpCorner.CornerRadius = UDim.new(0.2, 0)
+	UpCorner.CornerRadius = UDim.new(0.159, 0)
 	UpCorner.Parent = UpButton
 
 	local DownButton = Instance.new("TextButton")
 	DownButton.Name = "Down"
-	DownButton.Size = UDim2.new(0.14, 0, 0.70, 0)
-	DownButton.Position = UDim2.new(0.86, 0, 0.15, 0)
-	DownButton.BackgroundColor3 = Color3.fromRGB(255, 100, 105)
+	DownButton.Size = UDim2.fromScale(0.0821, 0.6818)
+	DownButton.Position = UDim2.fromScale(0.9026, 0.1591)
+	DownButton.BackgroundColor3 = UI_HOVER
 	DownButton.BorderSizePixel = 0
 	DownButton.Text = "▼"
-	DownButton.TextColor3 = Color3.fromRGB(250, 250, 255)
-	DownButton.TextSize = 11
+	DownButton.TextColor3 = UI_TEXT
 	DownButton.TextScaled = true
 	DownButton.Font = Enum.Font.GothamBold
 	DownButton.AutoButtonColor = true
 	DownButton.Parent = Row
 
 	local DownCorner = Instance.new("UICorner")
-	DownCorner.CornerRadius = UDim.new(0.2, 0)
+	DownCorner.CornerRadius = UDim.new(0.159, 0)
 	DownCorner.Parent = DownButton
 
 	PriorityRows[Index] = {
@@ -409,10 +566,7 @@ local function CreatePriorityRow(Index)
 			TARGET_ENTITY_PRIORITY[Index], TARGET_ENTITY_PRIORITY[Index - 1] =
 				TARGET_ENTITY_PRIORITY[Index - 1], TARGET_ENTITY_PRIORITY[Index]
 
-			for i, RowData in PriorityRows do
-				RowData.Number.Text = tostring(i) .. "."
-				RowData.Name.Text = TARGET_ENTITY_PRIORITY[i] or "--"
-			end
+			updatePriorityUI()
 		end
 	end)
 
@@ -421,10 +575,7 @@ local function CreatePriorityRow(Index)
 			TARGET_ENTITY_PRIORITY[Index], TARGET_ENTITY_PRIORITY[Index + 1] =
 				TARGET_ENTITY_PRIORITY[Index + 1], TARGET_ENTITY_PRIORITY[Index]
 
-			for i, RowData in PriorityRows do
-				RowData.Number.Text = tostring(i) .. "."
-				RowData.Name.Text = TARGET_ENTITY_PRIORITY[i] or "--"
-			end
+			updatePriorityUI()
 		end
 	end)
 end
@@ -433,10 +584,14 @@ for Index = 1, #TARGET_ENTITY_PRIORITY do
 	CreatePriorityRow(Index)
 end
 
-local function updatePriorityUI()
+function updatePriorityUI()
 	for i, RowData in PriorityRows do
-		RowData.Number.Text = tostring(i) .. "."
+		RowData.Number.Text = tostring(i)
 		RowData.Name.Text = TARGET_ENTITY_PRIORITY[i] or "--"
+		RowData.Up.Active = i > 1
+		RowData.Down.Active = i < #TARGET_ENTITY_PRIORITY
+		RowData.Up.TextTransparency = i > 1 and 0 or 0.65
+		RowData.Down.TextTransparency = i < #TARGET_ENTITY_PRIORITY and 0 or 0.65
 	end
 end
 
@@ -445,20 +600,45 @@ updatePriorityUI()
 --// GUI Toggle
 local GUIToggle = Instance.new("TextButton")
 GUIToggle.Name = "GUIToggle"
-GUIToggle.Size = UDim2.new(0, 100, 0, 32)
-GUIToggle.Position = UDim2.new(1, -110, 0, 10)
-GUIToggle.BackgroundColor3 = Color3.fromRGB(42, 42, 48)
+GUIToggle.Size = UDim2.fromOffset(100, 46)
+GUIToggle.Position = UDim2.new(1, -4, 0, 11)
+GUIToggle.AnchorPoint = Vector2.new(1, 0)
+GUIToggle.BackgroundColor3 = Color3.fromRGB(18, 18, 21)
+GUIToggle.BackgroundTransparency = 0.08
 GUIToggle.BorderSizePixel = 0
 GUIToggle.Text = "HIDE GUI"
-GUIToggle.TextColor3 = Color3.fromRGB(255, 255, 255)
-GUIToggle.TextSize = 12
+GUIToggle.TextTransparency = 1
+GUIToggle.TextColor3 = UI_TEXT
+GUIToggle.TextScaled = true
 GUIToggle.Font = Enum.Font.GothamBold
 GUIToggle.AutoButtonColor = true
 GUIToggle.Parent = ScreenGui
 
+local GUITogglePadding = Instance.new("UIPadding")
+GUITogglePadding.PaddingLeft = UDim.new(0, 10)
+GUITogglePadding.PaddingRight = UDim.new(0, 10)
+GUITogglePadding.PaddingTop = UDim.new(0, 10)
+GUITogglePadding.PaddingBottom = UDim.new(0, 10)
+GUITogglePadding.Parent = GUIToggle
+
+local GUIToggleLabel = Instance.new("TextLabel")
+GUIToggleLabel.Size = UDim2.fromScale(1, 1)
+GUIToggleLabel.BackgroundTransparency = 1
+GUIToggleLabel.Text = "HIDE GUI"
+GUIToggleLabel.TextColor3 = UI_TEXT
+GUIToggleLabel.TextScaled = true
+GUIToggleLabel.Font = Enum.Font.GothamBold
+GUIToggleLabel.Parent = GUIToggle
+
 local GUIToggleCorner = Instance.new("UICorner")
-GUIToggleCorner.CornerRadius = UDim.new(0, 6)
+GUIToggleCorner.CornerRadius = UDim.new(1, 0)
 GUIToggleCorner.Parent = GUIToggle
+
+local GUIToggleStroke = Instance.new("UIStroke")
+GUIToggleStroke.Color = UI_BORDER
+GUIToggleStroke.Thickness = 1
+GUIToggleStroke.Transparency = 0.2
+GUIToggleStroke.Parent = GUIToggle
 
 local GUIVisible = true
 
@@ -467,9 +647,9 @@ GUIToggle.Activated:Connect(function()
 	Panel.Visible = GUIVisible
 
 	if GUIVisible then
-		GUIToggle.Text = "HIDE GUI"
+		GUIToggleLabel.Text = "HIDE GUI"
 	else
-		GUIToggle.Text = "SHOW GUI"
+		GUIToggleLabel.Text = "SHOW GUI"
 	end
 end)
 
@@ -478,7 +658,7 @@ local Dragging = false
 local DragStart = nil
 local StartPosition = nil
 
-Panel.InputBegan:Connect(function(Input)
+Header.InputBegan:Connect(function(Input)
 	if Input.UserInputType == Enum.UserInputType.MouseButton1
 		or Input.UserInputType == Enum.UserInputType.Touch
 	then
@@ -506,12 +686,18 @@ UserInputService.InputChanged:Connect(function(Input)
 	end
 
 	local Delta = Input.Position - DragStart
+	local Camera = workspace.CurrentCamera
+	if not Camera then
+		return
+	end
 
-	Panel.Position = UDim2.new(
-		StartPosition.X.Scale,
-		StartPosition.X.Offset + Delta.X,
-		StartPosition.Y.Scale,
-		StartPosition.Y.Offset + Delta.Y
+	local Viewport = Camera.ViewportSize
+	local DeltaScaleX = Delta.X / Viewport.X
+	local DeltaScaleY = Delta.Y / Viewport.Y
+
+	Panel.Position = UDim2.fromScale(
+		StartPosition.X.Scale + DeltaScaleX,
+		StartPosition.Y.Scale + DeltaScaleY
 	)
 end)
 
@@ -519,9 +705,11 @@ local function updateBlockButton()
 	if BlockEnabled then
 		BlockToggle.Text = "●  AUTO BLOCKING  •  ENABLED"
 		BlockToggle.BackgroundColor3 = Color3.fromRGB(60, 125, 50)
+		BlockToggle.TextColor3 = Color3.fromRGB(190, 240, 205)
 	else
 		BlockToggle.Text = "●  AUTO BLOCKING  •  DISABLED"
-		BlockToggle.BackgroundColor3 = Color3.fromRGB(255, 65, 65)
+		BlockToggle.BackgroundColor3 = Color3.fromRGB(77, 43, 47)
+		BlockToggle.TextColor3 = Color3.fromRGB(255, 65, 65)
 	end
 end
 
@@ -562,7 +750,7 @@ local function updateEventCurrency()
 
 	if not PlayerStats then
 		EventCurrency = 0
-		EventCurrencyLabel.Text = "Event Currency   0"
+		EventCurrencyLabel.Text = "0"
 		return
 	end
 
@@ -570,7 +758,7 @@ local function updateEventCurrency()
 
 	if not Inventory then
 		EventCurrency = 0
-		EventCurrencyLabel.Text = "Event Currency   0"
+		EventCurrencyLabel.Text = "0"
 		return
 	end
 
@@ -585,7 +773,7 @@ local function updateEventCurrency()
 	local _, Amount = GetItem(InventoryValue, TargetCurrency)
 
 	EventCurrency = Amount
-	EventCurrencyLabel.Text = "Event Currency   " .. EventCurrency
+	EventCurrencyLabel.Text = EventCurrency
 end
 
 local function updateServerAge()
@@ -596,7 +784,7 @@ local function updateServerAge()
 	local Seconds = ServerAge % 60
 
 	ServerAgeLabel.Text = string.format(
-		"Server Age   %02d:%02d:%02d",
+		"%02d:%02d:%02d",
 		Hours,
 		Minutes,
 		Seconds
@@ -608,17 +796,17 @@ local function updatePosition()
 		local Position = RootPart.Position
 
 		PositionLabel.Text = string.format(
-			"Position XYZ   %.1f, %.1f, %.1f",
+			"%.1f, %.1f, %.1f",
 			Position.X,
 			Position.Y,
 			Position.Z
 		)
 	else
-		PositionLabel.Text = "Position   --"
+		PositionLabel.Text = "--"
 	end
 end
 
-PlaceIDLabel.Text = `Place ID  {game.PlaceId} {game.PlaceId ~= TargetPlaceID and "(NOT MATCH)" or ""}`
+PlaceIDLabel.Text = `{game.PlaceId} {game.PlaceId ~= TargetPlaceID and "(NOT MATCH)" or ""}`
 
 Toggle.Activated:Connect(function()
 	Enabled = not Enabled
@@ -929,6 +1117,16 @@ local function IsPathClear(TargetPosition)
 	return Result == nil
 end
 
+local function IsEntityInPriority(EntityName: string): boolean
+	for _, PriorityName in ipairs(TARGET_ENTITY_PRIORITY) do
+		if EntityName == PriorityName then
+			return true
+		end
+	end
+
+	return false
+end
+
 --// Get All Living Goblins
 local function GetLivingGoblins()
 	local MobFolder = workspace:FindFirstChild("Mobs")
@@ -958,7 +1156,7 @@ local function GetLivingGoblins()
 			continue
 		end
 
-		if Entity.Value ~= "Goblin" and Entity.Value ~= "Leader Goblin" then
+		if not IsEntityInPriority(Entity.Value) then
 			continue
 		end
 
@@ -1160,8 +1358,11 @@ RunService.Heartbeat:Connect(function()
 	updateServerAge()
 	updateEventCurrency()
 
-	WalkSpeedLabel.Text = "WalkSpeed   " .. Humanoid.WalkSpeed .. " | Death   " .. DEATH_COUNT .. " | WP   " .. CURRENT_WAYPOINT_TARGET .. "/" .. #Targets
-	Humanoid.WalkSpeed = 38
+	Humanoid.WalkSpeed  = 38
+
+	WayPointLabel.Text  = CURRENT_WAYPOINT_TARGET .. "/" .. #Targets
+	WalkSpeedLabel.Text = Humanoid.WalkSpeed
+	DeathLabel.Text     = DEATH_COUNT
 
 	if not Enabled then
 		Humanoid:Move(Vector3.zero)
@@ -1319,15 +1520,16 @@ RunService.Heartbeat:Connect(function()
 				local Distance = (RootPart.Position - MobRoot.Position).Magnitude
 				if Distance <= GOBLIN_REACH_DISTANCE then
 					if now - LAST_ATTACK_TIME >= ATTACK_INTERVAL then
+						LAST_ATTACK_TIME = now
 						InputBindableFunction:Invoke("AttackButton", Enum.UserInputState.Begin)
 						InputBindableFunction:Invoke("SkillButton", Enum.UserInputState.Begin)
-						LAST_ATTACK_TIME = now
 					end
 				end
 			end
 		end
 	else
 		if now - LAST_INTERACTION_TIME >= INTERACTION_INTERVAL then
+			LAST_INTERACTION_TIME = now
 			InputBindableFunction:Invoke("InteractButton", Enum.UserInputState.Begin)
 		end
 	end
