@@ -2334,7 +2334,7 @@ RunService.Heartbeat:Connect(function()
 			if MobHumanoid and MobRoot and MobHumanoid.Health > 0 then
 				local Distance = (RootPart.Position - MobRoot.Position).Magnitude
 
-				if Distance <= (PlayerOffset and PlayerOffset.Value + 2 or GOBLIN_REACH_DISTANCE) then
+				if Distance <= 30 then
 					--// ATTACK
 					if now - LAST_ATTACK_TIME >= ATTACK_INTERVAL then
 						LAST_ATTACK_TIME = now
@@ -2344,6 +2344,9 @@ RunService.Heartbeat:Connect(function()
 							Enum.UserInputState.Begin
 						)
 					end
+				end
+					
+				if Distance <= (PlayerOffset and PlayerOffset.Value + 2 or GOBLIN_REACH_DISTANCE) then
 
 					--// SKILL
 					if now - LAST_SKILL_TIME >= SKILL_INTERVAL then
