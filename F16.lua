@@ -26,7 +26,7 @@ local Targets = {
 	Vector3.new(-1792, 175, 2769),
 }
 
-local VERSION = "v0.98"
+local VERSION = "v0.99"
 
 --// Farm Area
 local FARM_CENTER = Vector3.new(-1715, 173, 2798)
@@ -58,7 +58,7 @@ local BLOCK_COOLDOWN        = 3
 local DEATH_COUNT           = 0
 
 --// Realtime Mob Detection
-local MOB_DETECTION_DISTANCE = 200
+local MOB_DETECTION_DISTANCE  = 200
 local MOB_VALIDATION_INTERVAL = 0.15
 local LAST_MOB_VALIDATION_TIME = 0
 
@@ -1057,13 +1057,11 @@ local function WatchMob(Mob)
 			table.insert(Connections, Entity:GetPropertyChangedSignal("Value"):Connect(function()
 				QueueEnemyPickerRefresh()
 
-				--// Re-evaluate this Mob immediately when Entity changes
 				ValidMobs[Mob] = nil
-				task.defer(function()
-					if Mob.Parent then
-						--// The realtime validator below will add it again if valid
-					end
-				end)
+
+				if ClosestTarget == Mob and not IsEntityInPriority(Entity.Value) then
+					ClosestTarget = nil
+				end
 			end))
 		end
 
@@ -1076,6 +1074,10 @@ local function WatchMob(Mob)
 				table.insert(Connections, Child:GetPropertyChangedSignal("Value"):Connect(function()
 					QueueEnemyPickerRefresh()
 					ValidMobs[Mob] = nil
+
+					if ClosestTarget == Mob and not IsEntityInPriority(Child.Value) then
+						ClosestTarget = nil
+					end
 				end))
 			end
 
@@ -1086,6 +1088,11 @@ local function WatchMob(Mob)
 		table.insert(Connections, Config.ChildRemoved:Connect(function(Child)
 			if Child.Name == "Entity" then
 				ValidMobs[Mob] = nil
+
+				if ClosestTarget == Mob then
+					ClosestTarget = nil
+				end
+
 				QueueEnemyPickerRefresh()
 			end
 		end))
@@ -1108,6 +1115,11 @@ local function WatchMob(Mob)
 	table.insert(Connections, Mob.ChildRemoved:Connect(function(Child)
 		if Child.Name == "Config" then
 			ValidMobs[Mob] = nil
+
+			if ClosestTarget == Mob then
+				ClosestTarget = nil
+			end
+
 			QueueEnemyPickerRefresh()
 		end
 	end))
@@ -1152,6 +1164,11 @@ local function WatchMobFolder(MobFolder)
 	table.insert(MobFolderConnections, MobFolder.ChildRemoved:Connect(function(Mob)
 		DisconnectMob(Mob)
 		ValidMobs[Mob] = nil
+
+		if ClosestTarget == Mob then
+			ClosestTarget = nil
+		end
+
 		QueueEnemyPickerRefresh()
 	end))
 end
@@ -1185,6 +1202,8 @@ workspace.ChildRemoved:Connect(function(Child)
 	end
 
 	table.clear(ValidMobs)
+
+	ClosestTarget = nil
 
 	QueueEnemyPickerRefresh()
 end)
@@ -1621,6 +1640,72 @@ local function CanSeeGoblin(Goblin)
 	return Result.Instance:IsDescendantOf(Goblin)
 end
 
+--// Target Lock Validation
+--// Only checks conditions that should actually cause the current target to be abandoned.
+--// LOS / path / deadzone are intentionally NOT checked here.
+local function IsTargetLockValid(Mob)
+	if not Mob or not Mob:IsA("Model") then
+		return false
+	end
+
+	if not Mob:IsDescendantOf(workspace) then
+		return false
+	end
+
+	if not RootPart then
+		return false
+	end
+
+	local MobFolder = workspace:FindFirstChild("Mobs")
+
+	if not MobFolder or not Mob:IsDescendantOf(MobFolder) then
+		return false
+	end
+
+	local Config = Mob:FindFirstChild("Config")
+
+	if not Config then
+		return false
+	end
+
+	local Entity = Config:FindFirstChild("Entity")
+
+	if not Entity or not Entity:IsA("StringValue") then
+		return false
+	end
+
+	if not IsEntityInPriority(Entity.Value) then
+		return false
+	end
+
+	local MobHumanoid = Mob:FindFirstChildOfClass("Humanoid")
+	local MobRoot     = Mob:FindFirstChild("HumanoidRootPart")
+
+	if not MobHumanoid or not MobRoot then
+		return false
+	end
+
+	if MobHumanoid.Health <= 0 then
+		return false
+	end
+
+	local Distance = (MobRoot.Position - RootPart.Position).Magnitude
+
+	if Distance > MOB_DETECTION_DISTANCE then
+		return false
+	end
+
+	if not IsInsideFarmArea(MobRoot.Position) then
+		return false
+	end
+
+	if IsWaterAtPosition(MobRoot.Position, Mob) then
+		return false
+	end
+
+	return true
+end
+
 --// Validate Mob
 local function IsValidMob(Mob)
 	if not Mob or not Mob:IsA("Model") then
@@ -1703,7 +1788,11 @@ local function UpdateValidMobs()
 
 	if not MobFolder or not RootPart then
 		table.clear(ValidMobs)
-		ClosestTarget = nil
+
+		if ClosestTarget and not IsTargetLockValid(ClosestTarget) then
+			ClosestTarget = nil
+		end
+
 		return
 	end
 
@@ -1716,10 +1805,6 @@ local function UpdateValidMobs()
 			ValidMobs[Mob] = true
 		else
 			ValidMobs[Mob] = nil
-
-			if ClosestTarget == Mob then
-				ClosestTarget = nil
-			end
 		end
 	end
 
@@ -1727,15 +1812,13 @@ local function UpdateValidMobs()
 	for Mob in ValidMobs do
 		if not CurrentMobs[Mob] then
 			ValidMobs[Mob] = nil
-
-			if ClosestTarget == Mob then
-				ClosestTarget = nil
-			end
 		end
 	end
 
-	--// Final target validation
-	if ClosestTarget and not ValidMobs[ClosestTarget] then
+	--// Target Lock validation is separate from ValidMobs.
+	--// A target can temporarily leave ValidMobs because of LOS/path,
+	--// but that must NOT cause the target to switch.
+	if ClosestTarget and not IsTargetLockValid(ClosestTarget) then
 		ClosestTarget = nil
 	end
 end
@@ -1746,7 +1829,7 @@ local function GetClosestGoblin()
 		return nil
 	end
 
-	local BestTarget = nil
+	local BestTarget   = nil
 	local BestPriority = math.huge
 	local BestDistance = math.huge
 
@@ -1965,8 +2048,13 @@ local function MoveToGoblin(Goblin)
 		return
 	end
 
-	if not ValidMobs[Goblin] then
-		ClosestTarget = nil
+	--// Only conditions that should abandon the locked target
+	--// are checked here.
+	if not IsTargetLockValid(Goblin) then
+		if ClosestTarget == Goblin then
+			ClosestTarget = nil
+		end
+
 		return
 	end
 
@@ -1974,46 +2062,30 @@ local function MoveToGoblin(Goblin)
 	local MobRoot     = Goblin:FindFirstChild("HumanoidRootPart")
 
 	if not MobHumanoid or not MobRoot or MobHumanoid.Health <= 0 then
-		ValidMobs[Goblin] = nil
-		ClosestTarget = nil
-		return
-	end
+		if ClosestTarget == Goblin then
+			ClosestTarget = nil
+		end
 
-	if IsWaterAtPosition(MobRoot.Position, Goblin) then
 		ValidMobs[Goblin] = nil
-		ClosestTarget = nil
 		return
 	end
 
 	local TargetPosition = MobRoot.Position
 
-	if not IsInsideFarmArea(TargetPosition) then
-		ValidMobs[Goblin] = nil
-		ClosestTarget = nil
-		return
-	end
-
-	if (RootPart.Position - TargetPosition).Magnitude > MOB_DETECTION_DISTANCE then
-		ValidMobs[Goblin] = nil
-		ClosestTarget = nil
-		return
-	end
-
+	--// Target remains locked even if LOS/path temporarily fails.
+	--// Just stop moving and wait for the same target.
 	if not CanSeeGoblin(Goblin) then
-		ValidMobs[Goblin] = nil
-		ClosestTarget = nil
+		Humanoid:Move(Vector3.zero)
 		return
 	end
 
 	if IsPathThroughWater(TargetPosition) then
-		ValidMobs[Goblin] = nil
-		ClosestTarget = nil
+		Humanoid:Move(Vector3.zero)
 		return
 	end
 
 	if IsPathThroughDeadzone(TargetPosition) then
-		ValidMobs[Goblin] = nil
-		ClosestTarget = nil
+		Humanoid:Move(Vector3.zero)
 		return
 	end
 
@@ -2194,16 +2266,17 @@ RunService.Heartbeat:Connect(function()
 		Humanoid:MoveTo(target)
 	else
 		--// Waypoint Reached
+		--// Only choose a new target when there is NO locked target.
 		if not ClosestTarget then
-			ClosestTarget = GetClosestGoblin()
-		elseif not ValidMobs[ClosestTarget] then
 			ClosestTarget = GetClosestGoblin()
 		end
 
-		--// Revalidate current target immediately before movement
-		if ClosestTarget and not IsValidMob(ClosestTarget) then
-			ValidMobs[ClosestTarget] = nil
-			ClosestTarget = GetClosestGoblin()
+		--// IMPORTANT:
+		--// Do NOT use ValidMobs[ClosestTarget] here.
+		--// ValidMobs can become false because of LOS/path/deadzone,
+		--// but the target must remain locked.
+		if ClosestTarget and not IsTargetLockValid(ClosestTarget) then
+			ClosestTarget = nil
 		end
 
 		if ClosestTarget then
@@ -2231,8 +2304,18 @@ RunService.Heartbeat:Connect(function()
 	--// Combat
 	if CURRENT_WAYPOINT_TARGET == #Targets then
 		if ClosestTarget then
-			if not ValidMobs[ClosestTarget] then
+			--// Do not clear the target just because it is temporarily
+			--// missing from ValidMobs. Only the target-lock conditions
+			--// are allowed to release it.
+			if not IsTargetLockValid(ClosestTarget) then
 				ClosestTarget = nil
+				return
+			end
+
+			--// Combat still requires the target to be fully valid.
+			--// If LOS/path/deadzone fails, simply wait for the same target.
+			if not IsValidMob(ClosestTarget) then
+				Humanoid:Move(Vector3.zero)
 				return
 			end
 
