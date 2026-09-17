@@ -1,9 +1,9 @@
-local Players               = game:GetService("Players")
-local Replicated             = game:GetService("ReplicatedStorage")
-local StarterGui             = game:GetService("StarterGui")
-local RunService              = game:GetService("RunService")
-local UserInputService        = game:GetService("UserInputService")
-local MarketplaceService      = game:GetService("MarketplaceService")
+local Players            = game:GetService("Players")
+local Replicated         = game:GetService("ReplicatedStorage")
+local StarterGui         = game:GetService("StarterGui")
+local RunService         = game:GetService("RunService")
+local UserInputService   = game:GetService("UserInputService")
+local MarketplaceService = game:GetService("MarketplaceService")
 
 local Player    = Players.LocalPlayer
 local PlayerGui = Player:WaitForChild("PlayerGui")
@@ -26,7 +26,7 @@ local Targets = {
 	Vector3.new(-1792, 175, 2769),
 }
 
-local VERSION = "v0.97"
+local VERSION = "v0.98"
 
 --// Farm Area
 local FARM_CENTER = Vector3.new(-1715, 173, 2798)
@@ -57,6 +57,13 @@ local JUMP_HEIGHT           = 3
 local BLOCK_COOLDOWN        = 3
 local DEATH_COUNT           = 0
 
+--// Realtime Mob Detection
+local MOB_DETECTION_DISTANCE = 200
+local MOB_VALIDATION_INTERVAL = 0.15
+local LAST_MOB_VALIDATION_TIME = 0
+
+local ValidMobs = {}
+
 --// Retreat
 local RETREAT_DISTANCE   = 30
 local RETREAT_DIRECTIONS = 16
@@ -80,8 +87,8 @@ local LAST_INTERACTION_TIME = 0
 local InputBindableFunction = nil
 local BlockValue            = nil
 
-local Enabled       = true
-local Equipped      = false
+local Enabled        = true
+local Equipped       = false
 local TargetCurrency = "Golden Shell"
 local LastInventory  = nil
 local EventCurrency  = 0
@@ -127,6 +134,9 @@ Player.CharacterAdded:Connect(function()
 	InputBindableFunction = nil
 	BlockValue = nil
 	Equipped = false
+	RETREATING = false
+
+	table.clear(ValidMobs)
 
 	task.delay(0.5, function()
 		Equipped = false
@@ -421,11 +431,14 @@ local function CreateStat(Name, DefaultText, Order)
 end
 
 local function neededExp(lvl)
-	lvl = lvl-1
+	lvl = lvl - 1
+
 	local total = 9
-	for i=1,lvl do
+
+	for i = 1, lvl do
 		total = total + (6 * (i + 2))
 	end
+
 	return total
 end
 
@@ -625,6 +638,7 @@ local function CreatePriorityRow(Index)
 		table.remove(TARGET_ENTITY_PRIORITY, Index)
 
 		ClosestTarget = nil
+		table.clear(ValidMobs)
 
 		for _, RowData in PriorityRows do
 			RowData.Row:Destroy()
@@ -656,6 +670,7 @@ local function CreatePriorityRow(Index)
 			TARGET_ENTITY_PRIORITY[Index - 1], TARGET_ENTITY_PRIORITY[Index]
 
 		ClosestTarget = nil
+		table.clear(ValidMobs)
 
 		updatePriorityUI()
 
@@ -673,6 +688,7 @@ local function CreatePriorityRow(Index)
 			TARGET_ENTITY_PRIORITY[Index + 1], TARGET_ENTITY_PRIORITY[Index]
 
 		ClosestTarget = nil
+		table.clear(ValidMobs)
 
 		updatePriorityUI()
 
@@ -841,7 +857,6 @@ local function GetDetectedEnemyEntities()
 end
 
 --// Auto Scale Enemy Picker
-
 local function UpdateEnemyPickerLayout()
 	local Rows = {}
 
@@ -936,6 +951,7 @@ local function CreateEnemyPickerRow(EntityName, Index)
 		table.insert(TARGET_ENTITY_PRIORITY, EntityName)
 
 		ClosestTarget = nil
+		table.clear(ValidMobs)
 
 		for _, RowData in PriorityRows do
 			RowData.Row:Destroy()
@@ -1040,6 +1056,14 @@ local function WatchMob(Mob)
 		if Entity and Entity:IsA("StringValue") then
 			table.insert(Connections, Entity:GetPropertyChangedSignal("Value"):Connect(function()
 				QueueEnemyPickerRefresh()
+
+				--// Re-evaluate this Mob immediately when Entity changes
+				ValidMobs[Mob] = nil
+				task.defer(function()
+					if Mob.Parent then
+						--// The realtime validator below will add it again if valid
+					end
+				end)
 			end))
 		end
 
@@ -1051,14 +1075,17 @@ local function WatchMob(Mob)
 			if Child:IsA("StringValue") then
 				table.insert(Connections, Child:GetPropertyChangedSignal("Value"):Connect(function()
 					QueueEnemyPickerRefresh()
+					ValidMobs[Mob] = nil
 				end))
 			end
 
 			QueueEnemyPickerRefresh()
+			ValidMobs[Mob] = nil
 		end))
 
 		table.insert(Connections, Config.ChildRemoved:Connect(function(Child)
 			if Child.Name == "Entity" then
+				ValidMobs[Mob] = nil
 				QueueEnemyPickerRefresh()
 			end
 		end))
@@ -1074,14 +1101,23 @@ local function WatchMob(Mob)
 		if Child.Name == "Config" then
 			WatchConfig(Child)
 			QueueEnemyPickerRefresh()
+			ValidMobs[Mob] = nil
 		end
 	end))
 
 	table.insert(Connections, Mob.ChildRemoved:Connect(function(Child)
 		if Child.Name == "Config" then
+			ValidMobs[Mob] = nil
 			QueueEnemyPickerRefresh()
 		end
 	end))
+
+	--// New Mob gets checked immediately
+	task.defer(function()
+		if Mob.Parent then
+			--// UpdateValidMobs() will validate it
+		end
+	end)
 
 	QueueEnemyPickerRefresh()
 end
@@ -1104,10 +1140,18 @@ local function WatchMobFolder(MobFolder)
 	table.insert(MobFolderConnections, MobFolder.ChildAdded:Connect(function(Mob)
 		WatchMob(Mob)
 		QueueEnemyPickerRefresh()
+
+		--// New mob is validated immediately
+		task.defer(function()
+			if Mob.Parent then
+				--// UpdateValidMobs() will catch it
+			end
+		end)
 	end))
 
 	table.insert(MobFolderConnections, MobFolder.ChildRemoved:Connect(function(Mob)
 		DisconnectMob(Mob)
+		ValidMobs[Mob] = nil
 		QueueEnemyPickerRefresh()
 	end))
 end
@@ -1139,6 +1183,8 @@ workspace.ChildRemoved:Connect(function(Child)
 	for Mob in MobConnections do
 		DisconnectMob(Mob)
 	end
+
+	table.clear(ValidMobs)
 
 	QueueEnemyPickerRefresh()
 end)
@@ -1204,8 +1250,8 @@ GUIToggle.Activated:Connect(function()
 end)
 
 --// Panel Dragging
-local Dragging     = false
-local DragStart    = nil
+local Dragging      = false
+local DragStart     = nil
 local StartPosition = nil
 
 Header.InputBegan:Connect(function(Input)
@@ -1328,10 +1374,12 @@ local function updateEventCurrency()
 
 	local PlayerLvl = PlayerStats:FindFirstChild("Level")
 	local PlayerExp = PlayerStats:FindFirstChild("EXP")
+
 	if not PlayerLvl or not PlayerExp then
 		return
 	end
-	ExpLabel.Text = PlayerExp.Value.."/"..neededExp(PlayerLvl.Value)
+
+	ExpLabel.Text = PlayerExp.Value .. "/" .. neededExp(PlayerLvl.Value)
 end
 
 local function updateServerAge()
@@ -1532,7 +1580,7 @@ local function IsPathThroughDeadzone(TargetPosition)
 
 	for DistanceTravelled = 0, Distance, DEADZONE_SAMPLE_DISTANCE do
 		local Position = Origin + Direction * DistanceTravelled
-		local DeadzoneOffset   = Position - FARM_DEADZONE_CENTER
+		local DeadzoneOffset = Position - FARM_DEADZONE_CENTER
 		local DeadzoneDistance = Vector3.new(DeadzoneOffset.X, 0, DeadzoneOffset.Z).Magnitude
 
 		if DeadzoneDistance <= FARM_DEADZONE_RADIUS then
@@ -1573,72 +1621,169 @@ local function CanSeeGoblin(Goblin)
 	return Result.Instance:IsDescendantOf(Goblin)
 end
 
---// Closest Visible Goblin
-local function GetClosestGoblin()
+--// Validate Mob
+local function IsValidMob(Mob)
+	if not Mob or not Mob:IsA("Model") then
+		return false
+	end
+
+	if not Mob:IsDescendantOf(workspace) then
+		return false
+	end
+
+	if not RootPart then
+		return false
+	end
+
+	local MobFolder = workspace:FindFirstChild("Mobs")
+
+	if not MobFolder or not Mob:IsDescendantOf(MobFolder) then
+		return false
+	end
+
+	local Config = Mob:FindFirstChild("Config")
+
+	if not Config then
+		return false
+	end
+
+	local Entity = Config:FindFirstChild("Entity")
+
+	if not Entity or not Entity:IsA("StringValue") then
+		return false
+	end
+
+	if not IsEntityInPriority(Entity.Value) then
+		return false
+	end
+
+	local MobHumanoid = Mob:FindFirstChildOfClass("Humanoid")
+	local MobRoot     = Mob:FindFirstChild("HumanoidRootPart")
+
+	if not MobHumanoid or not MobRoot then
+		return false
+	end
+
+	if MobHumanoid.Health <= 0 then
+		return false
+	end
+
+	local Distance = (MobRoot.Position - RootPart.Position).Magnitude
+
+	if Distance > MOB_DETECTION_DISTANCE then
+		return false
+	end
+
+	if not IsInsideFarmArea(MobRoot.Position) then
+		return false
+	end
+
+	if IsWaterAtPosition(MobRoot.Position, Mob) then
+		return false
+	end
+
+	if not CanSeeGoblin(Mob) then
+		return false
+	end
+
+	if IsPathThroughWater(MobRoot.Position) then
+		return false
+	end
+
+	if IsPathThroughDeadzone(MobRoot.Position) then
+		return false
+	end
+
+	return true
+end
+
+--// Update Realtime Valid Mob List
+local function UpdateValidMobs()
 	local MobFolder = workspace:FindFirstChild("Mobs")
 
 	if not MobFolder or not RootPart then
+		table.clear(ValidMobs)
+		ClosestTarget = nil
+		return
+	end
+
+	local CurrentMobs = {}
+
+	for _, Mob in MobFolder:GetChildren() do
+		CurrentMobs[Mob] = true
+
+		if IsValidMob(Mob) then
+			ValidMobs[Mob] = true
+		else
+			ValidMobs[Mob] = nil
+
+			if ClosestTarget == Mob then
+				ClosestTarget = nil
+			end
+		end
+	end
+
+	--// Remove mobs that no longer exist in the folder
+	for Mob in ValidMobs do
+		if not CurrentMobs[Mob] then
+			ValidMobs[Mob] = nil
+
+			if ClosestTarget == Mob then
+				ClosestTarget = nil
+			end
+		end
+	end
+
+	--// Final target validation
+	if ClosestTarget and not ValidMobs[ClosestTarget] then
+		ClosestTarget = nil
+	end
+end
+
+--// Closest Visible Goblin
+local function GetClosestGoblin()
+	if not RootPart then
 		return nil
 	end
 
-	for _, EntityPriority in TARGET_ENTITY_PRIORITY do
-		local ClosestMob      = nil
-		local ClosestDistance = math.huge
+	local BestTarget = nil
+	local BestPriority = math.huge
+	local BestDistance = math.huge
 
-		for _, mob in MobFolder:GetChildren() do
-			if not mob:IsA("Model") then
-				continue
-			end
-
-			local Config = mob:FindFirstChild("Config")
-
-			if not Config then
-				continue
-			end
-
-			local MobHumanoid = mob:FindFirstChildOfClass("Humanoid")
-			local MobRoot     = mob:FindFirstChild("HumanoidRootPart")
-
-			if not MobHumanoid or not MobRoot then
-				continue
-			end
-
-			if MobHumanoid.Health <= 0 then
-				continue
-			end
-
-			local Entity = Config:FindFirstChild("Entity")
-
-			if not Entity or Entity.Value ~= EntityPriority then
-				continue
-			end
-
-			local Distance = (MobRoot.Position - RootPart.Position).Magnitude
-
-			if not IsInsideFarmArea(MobRoot.Position) then
-				continue
-			end
-
-			if IsWaterAtPosition(MobRoot.Position, mob) then
-				continue
-			end
-
-			if not CanSeeGoblin(mob) or IsPathThroughWater(MobRoot.Position) then
-				continue
-			end
-
-			if Distance < ClosestDistance then
-				ClosestDistance = Distance
-				ClosestMob      = mob
-			end
+	for Mob in ValidMobs do
+		if not IsValidMob(Mob) then
+			ValidMobs[Mob] = nil
+			continue
 		end
 
-		if ClosestMob then
-			return ClosestMob
+		local Config = Mob:FindFirstChild("Config")
+		local Entity = Config and Config:FindFirstChild("Entity")
+		local MobRoot = Mob:FindFirstChild("HumanoidRootPart")
+
+		if not Entity or not MobRoot then
+			ValidMobs[Mob] = nil
+			continue
+		end
+
+		local Priority = table.find(TARGET_ENTITY_PRIORITY, Entity.Value)
+
+		if not Priority then
+			ValidMobs[Mob] = nil
+			continue
+		end
+
+		local Distance = (MobRoot.Position - RootPart.Position).Magnitude
+
+		if Priority < BestPriority
+			or (Priority == BestPriority and Distance < BestDistance)
+		then
+			BestPriority = Priority
+			BestDistance = Distance
+			BestTarget = Mob
 		end
 	end
 
-	return nil
+	return BestTarget
 end
 
 --// Retreat Obstacle Check
@@ -1683,14 +1828,14 @@ local function GetLivingGoblins()
 
 	local Goblins = {}
 
-	for _, mob in MobFolder:GetChildren() do
-		if not mob:IsA("Model") then
+	for _, Mob in MobFolder:GetChildren() do
+		if not Mob:IsA("Model") then
 			continue
 		end
 
-		local Config      = mob:FindFirstChild("Config")
-		local MobHumanoid = mob:FindFirstChildOfClass("Humanoid")
-		local MobRoot     = mob:FindFirstChild("HumanoidRootPart")
+		local Config      = Mob:FindFirstChild("Config")
+		local MobHumanoid = Mob:FindFirstChildOfClass("Humanoid")
+		local MobRoot     = Mob:FindFirstChild("HumanoidRootPart")
 
 		if not Config or not MobHumanoid or not MobRoot then
 			continue
@@ -1710,16 +1855,13 @@ local function GetLivingGoblins()
 			continue
 		end
 
-		table.insert(Goblins, mob)
+		table.insert(Goblins, Mob)
 	end
 
 	return Goblins
 end
 
 --// Calculate Retreat Position
-local RETREAT_DISTANCE   = 30
-local RETREAT_DIRECTIONS = 16
-
 local function GetRetreatPosition()
 	if not RootPart then
 		return nil
@@ -1812,11 +1954,8 @@ local function RetreatFromGoblins()
 
 	if RetreatPosition then
 		Humanoid:MoveTo(RetreatPosition)
-		return
-	end
-
-	if RootPart and RetreatDirection.Magnitude > 0 then
-		Humanoid:MoveTo(RetreatDirection or Vector3.zero)
+	else
+		Humanoid:Move(Vector3.zero)
 	end
 end
 
@@ -1826,15 +1965,22 @@ local function MoveToGoblin(Goblin)
 		return
 	end
 
+	if not ValidMobs[Goblin] then
+		ClosestTarget = nil
+		return
+	end
+
 	local MobHumanoid = Goblin:FindFirstChildOfClass("Humanoid")
 	local MobRoot     = Goblin:FindFirstChild("HumanoidRootPart")
 
 	if not MobHumanoid or not MobRoot or MobHumanoid.Health <= 0 then
+		ValidMobs[Goblin] = nil
 		ClosestTarget = nil
 		return
 	end
 
 	if IsWaterAtPosition(MobRoot.Position, Goblin) then
+		ValidMobs[Goblin] = nil
 		ClosestTarget = nil
 		return
 	end
@@ -1842,21 +1988,36 @@ local function MoveToGoblin(Goblin)
 	local TargetPosition = MobRoot.Position
 
 	if not IsInsideFarmArea(TargetPosition) then
+		ValidMobs[Goblin] = nil
+		ClosestTarget = nil
+		return
+	end
+
+	if (RootPart.Position - TargetPosition).Magnitude > MOB_DETECTION_DISTANCE then
+		ValidMobs[Goblin] = nil
+		ClosestTarget = nil
+		return
+	end
+
+	if not CanSeeGoblin(Goblin) then
+		ValidMobs[Goblin] = nil
+		ClosestTarget = nil
+		return
+	end
+
+	if IsPathThroughWater(TargetPosition) then
+		ValidMobs[Goblin] = nil
+		ClosestTarget = nil
+		return
+	end
+
+	if IsPathThroughDeadzone(TargetPosition) then
+		ValidMobs[Goblin] = nil
 		ClosestTarget = nil
 		return
 	end
 
 	if (RootPart.Position - TargetPosition).Magnitude <= GOBLIN_REACH_DISTANCE then
-		Humanoid:Move(Vector3.zero)
-		return
-	end
-
-	if IsPathThroughWater(TargetPosition) then
-		Humanoid:Move(Vector3.zero)
-		return
-	end
-
-	if IsPathThroughDeadzone(TargetPosition) then
 		Humanoid:Move(Vector3.zero)
 		return
 	end
@@ -1880,6 +2041,7 @@ end
 --// Position Update
 RunService.RenderStepped:Connect(function()
 	updatePosition()
+
 	if Humanoid and Humanoid.WalkSpeed < 38 then
 		Humanoid.WalkSpeed = 38
 	end
@@ -1897,10 +2059,14 @@ RunService.Heartbeat:Connect(function()
 
 	if not Humanoid or not RootPart then
 		updateCharacter()
+		table.clear(ValidMobs)
+		ClosestTarget = nil
 		return
 	end
 
 	if Humanoid.Health <= 0 then
+		table.clear(ValidMobs)
+		ClosestTarget = nil
 		return
 	end
 
@@ -1910,6 +2076,12 @@ RunService.Heartbeat:Connect(function()
 	WayPointLabel.Text  = CURRENT_WAYPOINT_TARGET .. "/" .. #Targets
 	WalkSpeedLabel.Text = Humanoid.WalkSpeed
 	DeathLabel.Text     = DEATH_COUNT
+
+	--// Realtime Mob Validation
+	if now - LAST_MOB_VALIDATION_TIME >= MOB_VALIDATION_INTERVAL then
+		LAST_MOB_VALIDATION_TIME = now
+		UpdateValidMobs()
+	end
 
 	if not Enabled then
 		Humanoid:Move(Vector3.zero)
@@ -1935,14 +2107,14 @@ RunService.Heartbeat:Connect(function()
 	elseif RETREATING and Humanoid.Health >= Humanoid.MaxHealth * 0.8 then
 		RETREATING = false
 	end
-	
+
 	if RETREATING then
 		local UseConsumable = Replicated:FindFirstChild("UseConsumable", true)
 		local PlayerStats   = Player:FindFirstChild("PlayerStats")
-	
+
 		DoJump()
 		RetreatFromGoblins()
-	
+
 		if InputBindableFunction
 			and (Equipped or (MainWeld.Part1 and MainWeld.Part1.Name ~= "UpperTorso"))
 		then
@@ -1950,10 +2122,10 @@ RunService.Heartbeat:Connect(function()
 			InputBindableFunction:Invoke("EquipButton", Enum.UserInputState.Begin)
 			return
 		end
-	
+
 		if UseConsumable and PlayerStats and not Equipped then
 			local LastConsumed = PlayerStats:FindFirstChild("LastConsumed")
-	
+
 			if LastConsumed
 				and LastConsumed.Value ~= ""
 				and now - LAST_CONSUME_TIME >= CONSUME_INTERVAL
@@ -1962,7 +2134,7 @@ RunService.Heartbeat:Connect(function()
 				UseConsumable:InvokeServer(LastConsumed.Value)
 			end
 		end
-	
+
 		return
 	end
 
@@ -2021,28 +2193,23 @@ RunService.Heartbeat:Connect(function()
 
 		Humanoid:MoveTo(target)
 	else
+		--// Waypoint Reached
 		if not ClosestTarget then
+			ClosestTarget = GetClosestGoblin()
+		elseif not ValidMobs[ClosestTarget] then
 			ClosestTarget = GetClosestGoblin()
 		end
 
-		local GoblinHumanoid = ClosestTarget and ClosestTarget:FindFirstChildOfClass("Humanoid")
-		local GoblinRoot     = ClosestTarget and ClosestTarget:FindFirstChild("HumanoidRootPart")
-
-		if ClosestTarget
-			and (
-				not GoblinHumanoid
-					or not GoblinRoot
-					or GoblinHumanoid.Health <= 0
-					or not GoblinRoot:IsDescendantOf(workspace)
-					or not IsInsideFarmArea(GoblinRoot.Position)
-					or IsWaterAtPosition(GoblinRoot.Position, ClosestTarget)
-			)
-		then
+		--// Revalidate current target immediately before movement
+		if ClosestTarget and not IsValidMob(ClosestTarget) then
+			ValidMobs[ClosestTarget] = nil
 			ClosestTarget = GetClosestGoblin()
 		end
 
 		if ClosestTarget then
 			MoveToGoblin(ClosestTarget)
+		else
+			Humanoid:Move(Vector3.zero)
 		end
 	end
 
@@ -2064,6 +2231,11 @@ RunService.Heartbeat:Connect(function()
 	--// Combat
 	if CURRENT_WAYPOINT_TARGET == #Targets then
 		if ClosestTarget then
+			if not ValidMobs[ClosestTarget] then
+				ClosestTarget = nil
+				return
+			end
+
 			if not Equipped
 				or (MainWeld.Part1 and MainWeld.Part1.Name == "UpperTorso")
 			then
@@ -2072,14 +2244,13 @@ RunService.Heartbeat:Connect(function()
 				return
 			end
 
-			local MobHumanoid = ClosestTarget:FindFirstChildOfClass("Humanoid")
-			local MobRoot     = ClosestTarget:FindFirstChild("HumanoidRootPart")
+			local MobHumanoid  = ClosestTarget:FindFirstChildOfClass("Humanoid")
+			local MobRoot      = ClosestTarget:FindFirstChild("HumanoidRootPart")
 			local PlayerOffset = ClosestTarget:FindFirstChild("PlayerOffset", true)
 
 			if MobHumanoid and MobRoot and MobHumanoid.Health > 0 then
 				local Distance = (RootPart.Position - MobRoot.Position).Magnitude
 
-				-- if Distance <= GOBLIN_REACH_DISTANCE then
 				if Distance <= (PlayerOffset and PlayerOffset.Value + 2 or GOBLIN_REACH_DISTANCE) then
 					--// ATTACK
 					if now - LAST_ATTACK_TIME >= ATTACK_INTERVAL then
@@ -2101,11 +2272,15 @@ RunService.Heartbeat:Connect(function()
 						)
 					end
 				end
+			else
+				ValidMobs[ClosestTarget] = nil
+				ClosestTarget = nil
 			end
 		end
 	else
 		if now - LAST_INTERACTION_TIME >= INTERACTION_INTERVAL then
 			LAST_INTERACTION_TIME = now
+
 			InputBindableFunction:Invoke(
 				"InteractButton",
 				Enum.UserInputState.Begin
