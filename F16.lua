@@ -151,7 +151,7 @@ local Panel = Instance.new("Frame")
 Panel.Name = "Panel"
 Panel.AnchorPoint = Vector2.new(1, 0.5)
 Panel.Size = UDim2.fromScale(0.25, 0.70)
-Panel.Position = UDim2.fromScale(0.95, 0.6)
+Panel.Position = UDim2.fromScale(0.95, 0.55)
 Panel.BackgroundColor3 = UI_PANEL
 Panel.BorderSizePixel = 0
 Panel.ClipsDescendants = true
@@ -597,60 +597,60 @@ end
 
 updatePriorityUI()
 
+local ToggleScreenGUI = PlayerGui:FindFirstChild("ToggleScreenGUI")
+if not ToggleScreenGUI then
+	ToggleScreenGUI = Instance.new("ScreenGui")
+	ToggleScreenGUI.Name = "ToggleScreenGUI"
+	ToggleScreenGUI.IgnoreGuiInset = true
+	ToggleScreenGUI.Parent = PlayerGui
+end
+
+local ToggleContainer = ToggleScreenGUI:FindFirstChild("ToggleContainer")
+if not ToggleContainer then
+	ToggleContainer = Instance.new("Frame")
+	ToggleContainer.Name = "ToggleContainer"
+	ToggleContainer.Size = UDim2.new(1, 0, 0, 48)
+	ToggleContainer.Position = UDim2.fromOffset(0, 10)
+	ToggleContainer.BackgroundTransparency = 1
+	ToggleContainer.Parent = ToggleScreenGUI
+end
+
+local ToggleUIListLayout = ToggleContainer:FindFirstChild("UIListLayout")
+if not ToggleUIListLayout then
+	ToggleUIListLayout = Instance.new("UIListLayout")
+	ToggleUIListLayout.Padding = UDim.new(0, 10)
+	ToggleUIListLayout.FillDirection = Enum.FillDirection.Horizontal
+	ToggleUIListLayout.SortOrder = Enum.SortOrder.LayoutOrder
+	ToggleUIListLayout.VerticalAlignment = Enum.VerticalAlignment.Center
+	ToggleUIListLayout.HorizontalAlignment = Enum.HorizontalAlignment.Right
+	ToggleUIListLayout.Parent = ToggleContainer
+end
+
 --// GUI Toggle
 local GUIToggle = Instance.new("TextButton")
 GUIToggle.Name = "GUIToggle"
-GUIToggle.Size = UDim2.fromOffset(100, 46)
-GUIToggle.Position = UDim2.new(1, -4, 0, 11)
-GUIToggle.AnchorPoint = Vector2.new(1, 0)
+GUIToggle.Size = UDim2.new(0, 44, 0, 44)
 GUIToggle.BackgroundColor3 = Color3.fromRGB(18, 18, 21)
 GUIToggle.BackgroundTransparency = 0.08
 GUIToggle.BorderSizePixel = 0
-GUIToggle.Text = "HIDE GUI"
-GUIToggle.TextTransparency = 1
+GUIToggle.Text = "≡"
+GUIToggle.LayoutOrder = 16
+GUIToggle.TextTransparency = 0
 GUIToggle.TextColor3 = UI_TEXT
 GUIToggle.TextScaled = true
-GUIToggle.Font = Enum.Font.GothamBold
+GUIToggle.Font = Enum.Font.Gotham
 GUIToggle.AutoButtonColor = true
-GUIToggle.Parent = ScreenGui
-
-local GUITogglePadding = Instance.new("UIPadding")
-GUITogglePadding.PaddingLeft = UDim.new(0, 10)
-GUITogglePadding.PaddingRight = UDim.new(0, 10)
-GUITogglePadding.PaddingTop = UDim.new(0, 10)
-GUITogglePadding.PaddingBottom = UDim.new(0, 10)
-GUITogglePadding.Parent = GUIToggle
-
-local GUIToggleLabel = Instance.new("TextLabel")
-GUIToggleLabel.Size = UDim2.fromScale(1, 1)
-GUIToggleLabel.BackgroundTransparency = 1
-GUIToggleLabel.Text = "HIDE GUI"
-GUIToggleLabel.TextColor3 = UI_TEXT
-GUIToggleLabel.TextScaled = true
-GUIToggleLabel.Font = Enum.Font.GothamBold
-GUIToggleLabel.Parent = GUIToggle
+GUIToggle.Parent = ToggleContainer
 
 local GUIToggleCorner = Instance.new("UICorner")
-GUIToggleCorner.CornerRadius = UDim.new(1, 0)
+GUIToggleCorner.CornerRadius = UDim.new(0, 8)
 GUIToggleCorner.Parent = GUIToggle
-
-local GUIToggleStroke = Instance.new("UIStroke")
-GUIToggleStroke.Color = UI_BORDER
-GUIToggleStroke.Thickness = 1
-GUIToggleStroke.Transparency = 0.2
-GUIToggleStroke.Parent = GUIToggle
 
 local GUIVisible = true
 
 GUIToggle.Activated:Connect(function()
 	GUIVisible = not GUIVisible
 	Panel.Visible = GUIVisible
-
-	if GUIVisible then
-		GUIToggleLabel.Text = "HIDE GUI"
-	else
-		GUIToggleLabel.Text = "SHOW GUI"
-	end
 end)
 
 --// Panel Dragging
