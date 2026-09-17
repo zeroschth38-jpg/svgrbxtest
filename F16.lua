@@ -26,7 +26,7 @@ local Targets = {
 	Vector3.new(-1792, 175, 2769),
 }
 
-local VERSION = "v0.93"
+local VERSION = "v0.95"
 
 --// Farm Area
 local FARM_CENTER = Vector3.new(-1715, 173, 2798)
@@ -1877,6 +1877,9 @@ end
 --// Position Update
 RunService.RenderStepped:Connect(function()
 	updatePosition()
+	if Humanoid and Humanoid.WalkSpeed < 38 then
+		Humanoid.WalkSpeed = 38
+	end
 end)
 
 --// Movement + Block
@@ -1901,8 +1904,6 @@ RunService.Heartbeat:Connect(function()
 	updateServerAge()
 	updateEventCurrency()
 
-	Humanoid.WalkSpeed = 38
-
 	WayPointLabel.Text  = CURRENT_WAYPOINT_TARGET .. "/" .. #Targets
 	WalkSpeedLabel.Text = Humanoid.WalkSpeed
 	DeathLabel.Text     = DEATH_COUNT
@@ -1926,27 +1927,30 @@ RunService.Heartbeat:Connect(function()
 	local MainWeld = Sword:FindFirstChild("MainWeld", true)
 
 	--// Emergency Retreat
-	if RETREATING and Humanoid.Health >= Humanoid.MaxHealth * 0.8  then
+	if Humanoid.Health <= Humanoid.MaxHealth * 0.4 then
+		RETREATING = true
+	elseif RETREATING and Humanoid.Health >= Humanoid.MaxHealth * 0.8 then
 		RETREATING = false
 	end
-	if (Humanoid.Health <= Humanoid.MaxHealth * 0.4 or RETREATING) then
+	
+	if RETREATING then
 		local UseConsumable = Replicated:FindFirstChild("UseConsumable", true)
 		local PlayerStats   = Player:FindFirstChild("PlayerStats")
-
+	
 		DoJump()
 		RetreatFromGoblins()
-
+	
 		if InputBindableFunction
-			and ( Equipped or (MainWeld.Part1 and MainWeld.Part1.Name ~= "UpperTorso") )
+			and (Equipped or (MainWeld.Part1 and MainWeld.Part1.Name ~= "UpperTorso"))
 		then
 			Equipped = false
 			InputBindableFunction:Invoke("EquipButton", Enum.UserInputState.Begin)
 			return
 		end
-
+	
 		if UseConsumable and PlayerStats and not Equipped then
 			local LastConsumed = PlayerStats:FindFirstChild("LastConsumed")
-
+	
 			if LastConsumed
 				and LastConsumed.Value ~= ""
 				and now - LAST_CONSUME_TIME >= CONSUME_INTERVAL
@@ -1955,7 +1959,7 @@ RunService.Heartbeat:Connect(function()
 				UseConsumable:InvokeServer(LastConsumed.Value)
 			end
 		end
-
+	
 		return
 	end
 
