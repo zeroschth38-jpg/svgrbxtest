@@ -26,7 +26,7 @@ local Targets = {
 	Vector3.new(-1792, 175, 2769),
 }
 
-local VERSION = "v0.85"
+local VERSION = "v0.86"
 
 --// Farm Area
 local FARM_CENTER = Vector3.new(-1715, 173, 2798)
