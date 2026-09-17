@@ -1,9 +1,9 @@
-local Players    = game:GetService("Players")
-local Replicated = game:GetService("ReplicatedStorage")
-local StarterGui = game:GetService("StarterGui")
-local RunService      = game:GetService("RunService")
-local UserInputService = game:GetService("UserInputService")
-local MarketplaceService = game:GetService("MarketplaceService")
+local Players               = game:GetService("Players")
+local Replicated             = game:GetService("ReplicatedStorage")
+local StarterGui             = game:GetService("StarterGui")
+local RunService              = game:GetService("RunService")
+local UserInputService        = game:GetService("UserInputService")
+local MarketplaceService      = game:GetService("MarketplaceService")
 
 local Player    = Players.LocalPlayer
 local PlayerGui = Player:WaitForChild("PlayerGui")
@@ -26,7 +26,7 @@ local Targets = {
 	Vector3.new(-1792, 175, 2769),
 }
 
-local VERSION = "v0.81"
+local VERSION = "v0.82"
 
 --// Farm Area
 local FARM_CENTER = Vector3.new(-1715, 173, 2798)
@@ -41,7 +41,7 @@ local Humanoid
 local RootPart
 
 local CURRENT_WAYPOINT_TARGET = 1
-local MAX_SERVER_AGE = 8 * 60 * 60
+local MAX_SERVER_AGE          = 8 * 60 * 60
 
 --// Combat
 local TARGET_ENTITY_PRIORITY = {
@@ -75,18 +75,17 @@ local LAST_INTERACTION_TIME = 0
 
 --// InputBindableFunction
 local InputBindableFunction = nil
-local BlockValue = nil
+local BlockValue            = nil
 
 local Enabled       = true
-
-local Equipped       = false
+local Equipped      = false
 local TargetCurrency = "Golden Shell"
 local LastInventory  = nil
 local EventCurrency  = 0
 
-local TargetPlaceID  = 11987539001
+local TargetPlaceID = 11987539001
 
-local BlockCache = {}
+local BlockCache   = {}
 local BlockEnabled = true
 
 --// Character
@@ -113,6 +112,7 @@ local function updateCharacter()
 		Humanoid:SetStateEnabled(Enum.HumanoidStateType.Climbing, false)
 	end)
 end
+
 updateCharacter()
 
 Player.CharacterAdded:Connect(function()
@@ -163,7 +163,6 @@ Panel.BorderSizePixel = 0
 Panel.ClipsDescendants = true
 Panel.Parent = ScreenGui
 
---// Panel uses Scale only; all child layout is Scale based
 local PanelCorner = Instance.new("UICorner")
 PanelCorner.CornerRadius = UDim.new(0, 1)
 PanelCorner.Parent = Panel
@@ -489,6 +488,24 @@ PriorityHint.Parent = Content
 
 local PriorityRows = {}
 
+local AddEnemyButton
+local EnemyPicker
+local EnemyPickerList
+local EnemyPickerListLayout
+local EnemyPickerPadding
+
+local RefreshEnemyPicker
+
+local function IsEntityInPriority(EntityName: string): boolean
+	for _, PriorityName in ipairs(TARGET_ENTITY_PRIORITY) do
+		if PriorityName == EntityName then
+			return true
+		end
+	end
+
+	return false
+end
+
 local function CreatePriorityRow(Index)
 	local Row = Instance.new("Frame")
 	Row.Name = "Priority" .. Index
@@ -515,15 +532,32 @@ local function CreatePriorityRow(Index)
 
 	local NameLabel = Instance.new("TextLabel")
 	NameLabel.Name = "Name"
-	NameLabel.Size = UDim2.fromScale(0.6718, 1)
+	NameLabel.Size = UDim2.fromScale(0.5687, 1)
 	NameLabel.Position = UDim2.fromScale(0.1231, 0)
 	NameLabel.BackgroundTransparency = 1
 	NameLabel.TextColor3 = UI_TEXT
-	NameLabel.TextSize = 11
+	NameLabel.TextSize = 14
 	NameLabel.Font = Enum.Font.GothamMedium
 	NameLabel.TextXAlignment = Enum.TextXAlignment.Left
 	NameLabel.TextTruncate = Enum.TextTruncate.AtEnd
 	NameLabel.Parent = Row
+
+	local RemoveButton = Instance.new("TextButton")
+	RemoveButton.Name = "Remove"
+	RemoveButton.Size = UDim2.fromScale(0.0821, 0.6818)
+	RemoveButton.Position = UDim2.fromScale(0.708, 0.1591)
+	RemoveButton.BackgroundColor3 = UI_HOVER
+	RemoveButton.BorderSizePixel = 0
+	RemoveButton.Text = "×"
+	RemoveButton.TextColor3 = UI_TEXT
+	RemoveButton.TextScaled = true
+	RemoveButton.Font = Enum.Font.GothamBold
+	RemoveButton.AutoButtonColor = true
+	RemoveButton.Parent = Row
+
+	local RemoveCorner = Instance.new("UICorner")
+	RemoveCorner.CornerRadius = UDim.new(0.159, 0)
+	RemoveCorner.Parent = RemoveButton
 
 	local UpButton = Instance.new("TextButton")
 	UpButton.Name = "Up"
@@ -560,50 +594,545 @@ local function CreatePriorityRow(Index)
 	DownCorner.Parent = DownButton
 
 	PriorityRows[Index] = {
-		Row = Row,
+		Row    = Row,
 		Number = NumberLabel,
-		Name = NameLabel,
-		Up = UpButton,
-		Down = DownButton,
+		Name   = NameLabel,
+		Remove = RemoveButton,
+		Up     = UpButton,
+		Down   = DownButton,
 	}
 
-	UpButton.Activated:Connect(function()
-		if Index > 1 then
-			TARGET_ENTITY_PRIORITY[Index], TARGET_ENTITY_PRIORITY[Index - 1] =
-				TARGET_ENTITY_PRIORITY[Index - 1], TARGET_ENTITY_PRIORITY[Index]
+	RemoveButton.Activated:Connect(function()
+		if not TARGET_ENTITY_PRIORITY[Index] then
+			return
+		end
 
-			updatePriorityUI()
+		local WasPickerVisible = EnemyPicker.Visible
+
+		table.remove(TARGET_ENTITY_PRIORITY, Index)
+
+		ClosestTarget = nil
+
+		for _, RowData in PriorityRows do
+			RowData.Row:Destroy()
+		end
+
+		table.clear(PriorityRows)
+
+		for NewIndex = 1, #TARGET_ENTITY_PRIORITY do
+			CreatePriorityRow(NewIndex)
+		end
+
+		AddEnemyButton.LayoutOrder = 8 + #TARGET_ENTITY_PRIORITY
+		EnemyPicker.LayoutOrder = 9 + #TARGET_ENTITY_PRIORITY
+
+		updatePriorityUI()
+
+		if WasPickerVisible then
+			EnemyPicker.Visible = true
+			RefreshEnemyPicker()
+		end
+	end)
+
+	UpButton.Activated:Connect(function()
+		if Index <= 1 then
+			return
+		end
+
+		TARGET_ENTITY_PRIORITY[Index], TARGET_ENTITY_PRIORITY[Index - 1] =
+			TARGET_ENTITY_PRIORITY[Index - 1], TARGET_ENTITY_PRIORITY[Index]
+
+		ClosestTarget = nil
+
+		updatePriorityUI()
+
+		if EnemyPicker.Visible then
+			RefreshEnemyPicker()
 		end
 	end)
 
 	DownButton.Activated:Connect(function()
-		if Index < #TARGET_ENTITY_PRIORITY then
-			TARGET_ENTITY_PRIORITY[Index], TARGET_ENTITY_PRIORITY[Index + 1] =
-				TARGET_ENTITY_PRIORITY[Index + 1], TARGET_ENTITY_PRIORITY[Index]
+		if Index >= #TARGET_ENTITY_PRIORITY then
+			return
+		end
 
-			updatePriorityUI()
+		TARGET_ENTITY_PRIORITY[Index], TARGET_ENTITY_PRIORITY[Index + 1] =
+			TARGET_ENTITY_PRIORITY[Index + 1], TARGET_ENTITY_PRIORITY[Index]
+
+		ClosestTarget = nil
+
+		updatePriorityUI()
+
+		if EnemyPicker.Visible then
+			RefreshEnemyPicker()
 		end
 	end)
+end
+
+function updatePriorityUI()
+	for Index, RowData in PriorityRows do
+		RowData.Number.Text = tostring(Index)
+		RowData.Name.Text = TARGET_ENTITY_PRIORITY[Index] or "--"
+
+		local IsFirst = Index == 1
+		local IsLast  = Index == #TARGET_ENTITY_PRIORITY
+
+		RowData.Up.Active = not IsFirst
+		RowData.Down.Active = not IsLast
+
+		RowData.Up.TextTransparency = IsFirst and 0.65 or 0
+		RowData.Down.TextTransparency = IsLast and 0.65 or 0
+	end
 end
 
 for Index = 1, #TARGET_ENTITY_PRIORITY do
 	CreatePriorityRow(Index)
 end
 
-function updatePriorityUI()
-	for i, RowData in PriorityRows do
-		RowData.Number.Text = tostring(i)
-		RowData.Name.Text = TARGET_ENTITY_PRIORITY[i] or "--"
-		RowData.Up.Active = i > 1
-		RowData.Down.Active = i < #TARGET_ENTITY_PRIORITY
-		RowData.Up.TextTransparency = i > 1 and 0 or 0.65
-		RowData.Down.TextTransparency = i < #TARGET_ENTITY_PRIORITY and 0 or 0.65
+updatePriorityUI()
+
+--// Add Enemy
+AddEnemyButton = Instance.new("TextButton")
+AddEnemyButton.Name = "AddEnemy"
+AddEnemyButton.LayoutOrder = 8 + #TARGET_ENTITY_PRIORITY
+AddEnemyButton.Size = UDim2.fromScale(0.9949, 0.0785)
+AddEnemyButton.BackgroundColor3 = UI_SURFACE
+AddEnemyButton.BorderSizePixel = 0
+AddEnemyButton.Text = "+  ADD ENEMY TO PRIORITY"
+AddEnemyButton.TextColor3 = UI_TEXT
+AddEnemyButton.TextScaled = true
+AddEnemyButton.Font = Enum.Font.GothamBold
+AddEnemyButton.AutoButtonColor = true
+AddEnemyButton.Parent = Content
+
+local AddEnemyCorner = Instance.new("UICorner")
+AddEnemyCorner.CornerRadius = UDim.new(0.205, 0)
+AddEnemyCorner.Parent = AddEnemyButton
+
+local AddEnemyStroke = Instance.new("UIStroke")
+AddEnemyStroke.Color = UI_BORDER
+AddEnemyStroke.Thickness = 1
+AddEnemyStroke.Transparency = 0.3
+AddEnemyStroke.Parent = AddEnemyButton
+
+--// Enemy Picker
+EnemyPicker = Instance.new("Frame")
+EnemyPicker.Name = "EnemyPicker"
+EnemyPicker.LayoutOrder = 9 + #TARGET_ENTITY_PRIORITY
+EnemyPicker.Size = UDim2.fromScale(0.9949, 0)
+EnemyPicker.BackgroundColor3 = UI_SURFACE
+EnemyPicker.BorderSizePixel = 0
+EnemyPicker.Visible = false
+EnemyPicker.ClipsDescendants = true
+EnemyPicker.Parent = Content
+
+local EnemyPickerCorner = Instance.new("UICorner")
+EnemyPickerCorner.CornerRadius = UDim.new(0.02, 0)
+EnemyPickerCorner.Parent = EnemyPicker
+
+local EnemyPickerStroke = Instance.new("UIStroke")
+EnemyPickerStroke.Color = UI_BORDER
+EnemyPickerStroke.Thickness = 1
+EnemyPickerStroke.Transparency = 0.2
+EnemyPickerStroke.Parent = EnemyPicker
+
+EnemyPickerList = Instance.new("Frame")
+EnemyPickerList.Name = "List"
+EnemyPickerList.Size = UDim2.fromScale(0.958, 1)
+EnemyPickerList.Position = UDim2.fromScale(0.021, 0)
+EnemyPickerList.BackgroundTransparency = 1
+EnemyPickerList.BorderSizePixel = 0
+EnemyPickerList.Parent = EnemyPicker
+
+EnemyPickerListLayout = Instance.new("UIListLayout")
+EnemyPickerListLayout.SortOrder = Enum.SortOrder.LayoutOrder
+EnemyPickerListLayout.FillDirection = Enum.FillDirection.Vertical
+EnemyPickerListLayout.HorizontalAlignment = Enum.HorizontalAlignment.Center
+EnemyPickerListLayout.VerticalAlignment = Enum.VerticalAlignment.Center
+EnemyPickerListLayout.Padding = UDim.new(0, 5)
+EnemyPickerListLayout.Parent = EnemyPickerList
+
+EnemyPickerPadding = Instance.new("UIPadding")
+EnemyPickerPadding.PaddingTop = UDim.new(0, 15)
+EnemyPickerPadding.PaddingBottom = UDim.new(0, 15)
+EnemyPickerPadding.PaddingLeft = UDim.new(0, 5)
+EnemyPickerPadding.PaddingRight = UDim.new(0, 5)
+EnemyPickerPadding.Parent = EnemyPicker
+
+--// Detected Entity List
+local DetectedEntities = {}
+
+local function GetDetectedEnemyEntities()
+	local MobFolder = workspace:FindFirstChild("Mobs")
+
+	if not MobFolder then
+		return {}
+	end
+
+	local EntitySet = {}
+
+	for _, Mob in MobFolder:GetChildren() do
+		if not Mob:IsA("Model") then
+			continue
+		end
+
+		local Config = Mob:FindFirstChild("Config")
+
+		if not Config then
+			continue
+		end
+
+		local Entity = Config:FindFirstChild("Entity")
+
+		if not Entity then
+			continue
+		end
+
+		if typeof(Entity.Value) ~= "string" then
+			continue
+		end
+
+		if Entity.Value == "" then
+			continue
+		end
+
+		EntitySet[Entity.Value] = true
+	end
+
+	local Result = {}
+
+	for EntityName in EntitySet do
+		table.insert(Result, EntityName)
+	end
+
+	table.sort(Result, function(A, B)
+		local APriority = table.find(TARGET_ENTITY_PRIORITY, A)
+		local BPriority = table.find(TARGET_ENTITY_PRIORITY, B)
+
+		if APriority and BPriority then
+			return APriority < BPriority
+		end
+
+		if APriority then
+			return true
+		end
+
+		if BPriority then
+			return false
+		end
+
+		return A < B
+	end)
+
+	return Result
+end
+
+--// Auto Scale Enemy Picker
+
+local function UpdateEnemyPickerLayout()
+	local Rows = {}
+
+	for _, Child in EnemyPickerList:GetChildren() do
+		if Child:IsA("GuiObject") then
+			table.insert(Rows, Child)
+		end
+	end
+
+	local Count = #Rows
+
+	if Count == 0 then
+		EnemyPicker.Size = UDim2.fromScale(0.9949, 0)
+		return
+	end
+
+	local RowHeight = 1 / Count
+
+	EnemyPicker.Size     = UDim2.fromScale(0.9949, Count * 0.0822)
+	EnemyPickerList.Size = UDim2.fromScale(0.958, 1.05)
+
+	for Index, Row in Rows do
+		Row.Size     = UDim2.fromScale(1, RowHeight)
+		Row.Position = UDim2.fromScale(0, (Index - 1) * RowHeight)
 	end
 end
 
-updatePriorityUI()
+local function ClearEnemyPicker()
+	for _, Child in EnemyPickerList:GetChildren() do
+		if Child:IsA("GuiObject") and Child ~= EnemyPickerListLayout then
+			Child:Destroy()
+		end
+	end
+end
 
+local function CreateEnemyPickerRow(EntityName, Index)
+	local Row = Instance.new("TextButton")
+	Row.Name = "Enemy_" .. EntityName
+	Row.LayoutOrder = Index
+	Row.Size = UDim2.fromScale(1, 0.0822)
+	Row.BackgroundColor3 = UI_PANEL
+	Row.BorderSizePixel = 0
+	Row.Text = ""
+	Row.AutoButtonColor = false
+	Row.Parent = EnemyPickerList
+
+	local RowCorner = Instance.new("UICorner")
+	RowCorner.CornerRadius = UDim.new(0.02, 0)
+	RowCorner.Parent = Row
+
+	local NameLabel = Instance.new("TextLabel")
+	NameLabel.Name = "Name"
+	NameLabel.Size = UDim2.fromScale(0.68, 1)
+	NameLabel.Position = UDim2.fromScale(0.025, 0)
+	NameLabel.BackgroundTransparency = 1
+	NameLabel.Text = EntityName
+	NameLabel.TextColor3 = UI_TEXT
+	NameLabel.TextScaled = false
+	NameLabel.TextSize = 14
+	NameLabel.Font = Enum.Font.GothamMedium
+	NameLabel.TextXAlignment = Enum.TextXAlignment.Left
+	NameLabel.TextTruncate = Enum.TextTruncate.AtEnd
+	NameLabel.Parent = Row
+
+	local IsPriority = IsEntityInPriority(EntityName)
+
+	local ActionLabel = Instance.new("TextLabel")
+	ActionLabel.Name = "Action"
+	ActionLabel.Size = UDim2.fromScale(0.265, 1)
+	ActionLabel.Position = UDim2.fromScale(0.71, 0)
+	ActionLabel.BackgroundTransparency = 1
+	ActionLabel.Text = IsPriority and "✓  IN PRIORITY" or "+  ADD"
+	ActionLabel.TextColor3 = IsPriority and UI_MUTED or UI_ACCENT
+	ActionLabel.TextScaled = true
+	ActionLabel.Font = Enum.Font.GothamBold
+	ActionLabel.TextXAlignment = Enum.TextXAlignment.Right
+	ActionLabel.Parent = Row
+
+	Row.MouseEnter:Connect(function()
+		Row.BackgroundColor3 = UI_HOVER
+	end)
+
+	Row.MouseLeave:Connect(function()
+		Row.BackgroundColor3 = UI_PANEL
+	end)
+
+	Row.Activated:Connect(function()
+		if IsEntityInPriority(EntityName) then
+			return
+		end
+
+		table.insert(TARGET_ENTITY_PRIORITY, EntityName)
+
+		ClosestTarget = nil
+
+		for _, RowData in PriorityRows do
+			RowData.Row:Destroy()
+		end
+
+		table.clear(PriorityRows)
+
+		for NewIndex = 1, #TARGET_ENTITY_PRIORITY do
+			CreatePriorityRow(NewIndex)
+		end
+
+		AddEnemyButton.LayoutOrder = 8 + #TARGET_ENTITY_PRIORITY
+		EnemyPicker.LayoutOrder = 9 + #TARGET_ENTITY_PRIORITY
+
+		updatePriorityUI()
+		RefreshEnemyPicker()
+	end)
+end
+
+RefreshEnemyPicker = function()
+	if not EnemyPicker.Visible then
+		return
+	end
+
+	ClearEnemyPicker()
+
+	DetectedEntities = GetDetectedEnemyEntities()
+
+	for Index, EntityName in ipairs(DetectedEntities) do
+		CreateEnemyPickerRow(EntityName, Index)
+	end
+
+	task.defer(UpdateEnemyPickerLayout)
+end
+
+AddEnemyButton.Activated:Connect(function()
+	EnemyPicker.Visible = not EnemyPicker.Visible
+
+	if EnemyPicker.Visible then
+		RefreshEnemyPicker()
+	else
+		EnemyPicker.Size = UDim2.fromScale(0.9949, 0)
+	end
+end)
+
+--// Mob Watcher
+local MobConnections       = {}
+local MobFolderConnections = {}
+local RefreshQueued        = false
+
+local function QueueEnemyPickerRefresh()
+	if not EnemyPicker.Visible then
+		return
+	end
+
+	if RefreshQueued then
+		return
+	end
+
+	RefreshQueued = true
+
+	task.defer(function()
+		RefreshQueued = false
+
+		if EnemyPicker.Visible then
+			RefreshEnemyPicker()
+		end
+	end)
+end
+
+local function DisconnectMob(Mob)
+	local Connections = MobConnections[Mob]
+
+	if not Connections then
+		return
+	end
+
+	for _, Connection in Connections do
+		Connection:Disconnect()
+	end
+
+	MobConnections[Mob] = nil
+end
+
+local function WatchMob(Mob)
+	if not Mob:IsA("Model") then
+		return
+	end
+
+	DisconnectMob(Mob)
+
+	local Connections = {}
+	MobConnections[Mob] = Connections
+
+	local function WatchConfig(Config)
+		if not Config then
+			return
+		end
+
+		local Entity = Config:FindFirstChild("Entity")
+
+		if Entity and Entity:IsA("StringValue") then
+			table.insert(Connections, Entity:GetPropertyChangedSignal("Value"):Connect(function()
+				QueueEnemyPickerRefresh()
+			end))
+		end
+
+		table.insert(Connections, Config.ChildAdded:Connect(function(Child)
+			if Child.Name ~= "Entity" then
+				return
+			end
+
+			if Child:IsA("StringValue") then
+				table.insert(Connections, Child:GetPropertyChangedSignal("Value"):Connect(function()
+					QueueEnemyPickerRefresh()
+				end))
+			end
+
+			QueueEnemyPickerRefresh()
+		end))
+
+		table.insert(Connections, Config.ChildRemoved:Connect(function(Child)
+			if Child.Name == "Entity" then
+				QueueEnemyPickerRefresh()
+			end
+		end))
+	end
+
+	local Config = Mob:FindFirstChild("Config")
+
+	if Config then
+		WatchConfig(Config)
+	end
+
+	table.insert(Connections, Mob.ChildAdded:Connect(function(Child)
+		if Child.Name == "Config" then
+			WatchConfig(Child)
+			QueueEnemyPickerRefresh()
+		end
+	end))
+
+	table.insert(Connections, Mob.ChildRemoved:Connect(function(Child)
+		if Child.Name == "Config" then
+			QueueEnemyPickerRefresh()
+		end
+	end))
+
+	QueueEnemyPickerRefresh()
+end
+
+local function WatchMobFolder(MobFolder)
+	for _, Connection in MobFolderConnections do
+		Connection:Disconnect()
+	end
+
+	table.clear(MobFolderConnections)
+
+	for Mob in MobConnections do
+		DisconnectMob(Mob)
+	end
+
+	for _, Mob in MobFolder:GetChildren() do
+		WatchMob(Mob)
+	end
+
+	table.insert(MobFolderConnections, MobFolder.ChildAdded:Connect(function(Mob)
+		WatchMob(Mob)
+		QueueEnemyPickerRefresh()
+	end))
+
+	table.insert(MobFolderConnections, MobFolder.ChildRemoved:Connect(function(Mob)
+		DisconnectMob(Mob)
+		QueueEnemyPickerRefresh()
+	end))
+end
+
+local ExistingMobFolder = workspace:FindFirstChild("Mobs")
+
+if ExistingMobFolder then
+	WatchMobFolder(ExistingMobFolder)
+end
+
+workspace.ChildAdded:Connect(function(Child)
+	if Child.Name == "Mobs" then
+		WatchMobFolder(Child)
+		QueueEnemyPickerRefresh()
+	end
+end)
+
+workspace.ChildRemoved:Connect(function(Child)
+	if Child.Name ~= "Mobs" then
+		return
+	end
+
+	for _, Connection in MobFolderConnections do
+		Connection:Disconnect()
+	end
+
+	table.clear(MobFolderConnections)
+
+	for Mob in MobConnections do
+		DisconnectMob(Mob)
+	end
+
+	QueueEnemyPickerRefresh()
+end)
+
+--// Toggle Screen GUI
 local ToggleScreenGUI = PlayerGui:FindFirstChild("ToggleScreenGUI")
+
 if not ToggleScreenGUI then
 	ToggleScreenGUI = Instance.new("ScreenGui")
 	ToggleScreenGUI.Name = "ToggleScreenGUI"
@@ -612,6 +1141,7 @@ if not ToggleScreenGUI then
 end
 
 local ToggleContainer = ToggleScreenGUI:FindFirstChild("ToggleContainer")
+
 if not ToggleContainer then
 	ToggleContainer = Instance.new("Frame")
 	ToggleContainer.Name = "ToggleContainer"
@@ -622,6 +1152,7 @@ if not ToggleContainer then
 end
 
 local ToggleUIListLayout = ToggleContainer:FindFirstChild("UIListLayout")
+
 if not ToggleUIListLayout then
 	ToggleUIListLayout = Instance.new("UIListLayout")
 	ToggleUIListLayout.Padding = UDim.new(0, 10)
@@ -660,8 +1191,8 @@ GUIToggle.Activated:Connect(function()
 end)
 
 --// Panel Dragging
-local Dragging = false
-local DragStart = nil
+local Dragging     = false
+local DragStart    = nil
 local StartPosition = nil
 
 Header.InputBegan:Connect(function(Input)
@@ -693,11 +1224,13 @@ UserInputService.InputChanged:Connect(function(Input)
 
 	local Delta = Input.Position - DragStart
 	local Camera = workspace.CurrentCamera
+
 	if not Camera then
 		return
 	end
 
 	local Viewport = Camera.ViewportSize
+
 	local DeltaScaleX = Delta.X / Viewport.X
 	local DeltaScaleY = Delta.Y / Viewport.Y
 
@@ -707,15 +1240,14 @@ UserInputService.InputChanged:Connect(function(Input)
 	)
 end)
 
+--// Block Button
 local function updateBlockButton()
 	if BlockEnabled then
 		BlockToggle.Text = "●  AUTO BLOCKING  •  ENABLED"
 		BlockToggle.BackgroundColor3 = Color3.fromRGB(60, 125, 50)
-		--BlockToggle.TextColor3 = Color3.fromRGB(190, 240, 205)
 	else
 		BlockToggle.Text = "●  AUTO BLOCKING  •  DISABLED"
 		BlockToggle.BackgroundColor3 = Color3.fromRGB(255, 65, 65)
-		--BlockToggle.TextColor3 = Color3.fromRGB(255, 65, 65)
 	end
 end
 
@@ -726,7 +1258,7 @@ end)
 
 updateBlockButton()
 
---// UI Update
+--// Farm Button
 local function updateButton()
 	if Enabled then
 		Toggle.Text = "●  AUTO FARMING  •  ENABLED"
@@ -1067,12 +1599,10 @@ local function GetClosestGoblin()
 				continue
 			end
 
-			--// Ignore Goblins that are in water
 			if IsWaterAtPosition(MobRoot.Position, mob) then
 				continue
 			end
 
-			--// Ignore Goblins that require crossing water
 			if not CanSeeGoblin(mob) or IsPathThroughWater(MobRoot.Position) then
 				continue
 			end
@@ -1123,16 +1653,6 @@ local function IsPathClear(TargetPosition)
 	return Result == nil
 end
 
-local function IsEntityInPriority(EntityName: string): boolean
-	for _, PriorityName in ipairs(TARGET_ENTITY_PRIORITY) do
-		if EntityName == PriorityName then
-			return true
-		end
-	end
-
-	return false
-end
-
 --// Get All Living Goblins
 local function GetLivingGoblins()
 	local MobFolder = workspace:FindFirstChild("Mobs")
@@ -1177,6 +1697,9 @@ local function GetLivingGoblins()
 end
 
 --// Calculate Retreat Position
+local RETREAT_DISTANCE   = 30
+local RETREAT_DIRECTIONS = 16
+
 local function GetRetreatPosition()
 	if not RootPart then
 		return nil
@@ -1190,7 +1713,6 @@ local function GetRetreatPosition()
 
 	local RetreatDirection = Vector3.zero
 
-	--// Prefer current target if it is still alive
 	if ClosestTarget
 		and ClosestTarget:IsDescendantOf(workspace)
 	then
@@ -1210,7 +1732,6 @@ local function GetRetreatPosition()
 		end
 	end
 
-	--// Fallback: calculate direction from all living Goblins
 	if RetreatDirection.Magnitude <= 0 then
 		for _, Goblin in Goblins do
 			local MobRoot = Goblin:FindFirstChild("HumanoidRootPart")
@@ -1290,7 +1811,6 @@ local function MoveToGoblin(Goblin)
 		return
 	end
 
-	--// Target entered water
 	if IsWaterAtPosition(MobRoot.Position, Goblin) then
 		ClosestTarget = nil
 		return
@@ -1298,25 +1818,21 @@ local function MoveToGoblin(Goblin)
 
 	local TargetPosition = MobRoot.Position
 
-	--// Target outside farm area / deadzone
 	if not IsInsideFarmArea(TargetPosition) then
 		ClosestTarget = nil
 		return
 	end
 
-	--// Already close enough
 	if (RootPart.Position - TargetPosition).Magnitude <= GOBLIN_REACH_DISTANCE then
 		Humanoid:Move(Vector3.zero)
 		return
 	end
 
-	--// Never cross water to reach target
 	if IsPathThroughWater(TargetPosition) then
 		Humanoid:Move(Vector3.zero)
 		return
 	end
 
-	--// Never enter deadzone
 	if IsPathThroughDeadzone(TargetPosition) then
 		Humanoid:Move(Vector3.zero)
 		return
@@ -1346,6 +1862,7 @@ end)
 --// Movement + Block
 RunService.Heartbeat:Connect(function()
 	local now = os.clock()
+
 	if game.PlaceId ~= TargetPlaceID then
 		Enabled = false
 		updateButton()
@@ -1364,7 +1881,7 @@ RunService.Heartbeat:Connect(function()
 	updateServerAge()
 	updateEventCurrency()
 
-	Humanoid.WalkSpeed  = 38
+	Humanoid.WalkSpeed = 38
 
 	WayPointLabel.Text  = CURRENT_WAYPOINT_TARGET .. "/" .. #Targets
 	WalkSpeedLabel.Text = Humanoid.WalkSpeed
@@ -1380,15 +1897,9 @@ RunService.Heartbeat:Connect(function()
 		return
 	end
 
-	-- if not BlockValue then
-	-- 	BlockValue = Replicated:FindFirstChild("BlockValue", true) :: RemoteEvent
-	-- 	if BlockValue then
-	-- 		BlockValue:FireServer(true)
-	-- 	end
-	-- end
-
 	local Sword = Character:FindFirstChild("Sword")
-	if not Sword or (Sword and not Sword:FindFirstChild("MainWeld", true)) then
+
+	if not Sword or not Sword:FindFirstChild("MainWeld", true) then
 		return
 	end
 
@@ -1396,15 +1907,20 @@ RunService.Heartbeat:Connect(function()
 
 	--// Emergency Retreat
 	if Humanoid.Health <= Humanoid.MaxHealth * 0.4 then
-		-- ClosestTarget = nil
-
 		local UseConsumable = Replicated:FindFirstChild("UseConsumable", true)
 		local PlayerStats   = Player:FindFirstChild("PlayerStats")
-		if InputBindableFunction and (Equipped or (MainWeld.Part1 and MainWeld.Part1.Name ~= "UpperTorso")) then
+
+		if InputBindableFunction
+			and (
+				Equipped
+					or (MainWeld.Part1 and MainWeld.Part1.Name ~= "UpperTorso")
+			)
+		then
 			Equipped = false
 			InputBindableFunction:Invoke("EquipButton", Enum.UserInputState.Begin)
 			return
 		end
+
 		if UseConsumable and PlayerStats and not Equipped then
 			local LastConsumed = PlayerStats:FindFirstChild("LastConsumed")
 
@@ -1416,6 +1932,7 @@ RunService.Heartbeat:Connect(function()
 				UseConsumable:InvokeServer(LastConsumed.Value)
 			end
 		end
+
 		DoJump()
 		RetreatFromGoblins()
 		return
@@ -1423,7 +1940,7 @@ RunService.Heartbeat:Connect(function()
 
 	--// Player Check
 	if BlockEnabled then
-		local HasOtherPlayer  = false
+		local HasOtherPlayer   = false
 		local HasBlockedPlayer = false
 
 		for _, plr in Players:GetPlayers() do
@@ -1476,7 +1993,6 @@ RunService.Heartbeat:Connect(function()
 
 		Humanoid:MoveTo(target)
 	else
-		--// Waypoint Reached
 		if not ClosestTarget then
 			ClosestTarget = GetClosestGoblin()
 		end
@@ -1484,7 +2000,6 @@ RunService.Heartbeat:Connect(function()
 		local GoblinHumanoid = ClosestTarget and ClosestTarget:FindFirstChildOfClass("Humanoid")
 		local GoblinRoot     = ClosestTarget and ClosestTarget:FindFirstChild("HumanoidRootPart")
 
-		--// Only abandon target if the target itself becomes invalid
 		if ClosestTarget
 			and (
 				not GoblinHumanoid
@@ -1521,7 +2036,9 @@ RunService.Heartbeat:Connect(function()
 	--// Combat
 	if CURRENT_WAYPOINT_TARGET == #Targets then
 		if ClosestTarget then
-			if not Equipped or (MainWeld.Part1 and MainWeld.Part1.Name == "UpperTorso") then
+			if not Equipped
+				or (MainWeld.Part1 and MainWeld.Part1.Name == "UpperTorso")
+			then
 				Equipped = true
 				InputBindableFunction:Invoke("EquipButton", Enum.UserInputState.Begin)
 				return
@@ -1529,13 +2046,23 @@ RunService.Heartbeat:Connect(function()
 
 			local MobHumanoid = ClosestTarget:FindFirstChildOfClass("Humanoid")
 			local MobRoot     = ClosestTarget:FindFirstChild("HumanoidRootPart")
+
 			if MobHumanoid and MobRoot and MobHumanoid.Health > 0 then
 				local Distance = (RootPart.Position - MobRoot.Position).Magnitude
+
 				if Distance <= GOBLIN_REACH_DISTANCE then
 					if now - LAST_ATTACK_TIME >= ATTACK_INTERVAL then
 						LAST_ATTACK_TIME = now
-						InputBindableFunction:Invoke("AttackButton", Enum.UserInputState.Begin)
-						InputBindableFunction:Invoke("SkillButton", Enum.UserInputState.Begin)
+
+						InputBindableFunction:Invoke(
+							"AttackButton",
+							Enum.UserInputState.Begin
+						)
+
+						InputBindableFunction:Invoke(
+							"SkillButton",
+							Enum.UserInputState.Begin
+						)
 					end
 				end
 			end
@@ -1543,7 +2070,10 @@ RunService.Heartbeat:Connect(function()
 	else
 		if now - LAST_INTERACTION_TIME >= INTERACTION_INTERVAL then
 			LAST_INTERACTION_TIME = now
-			InputBindableFunction:Invoke("InteractButton", Enum.UserInputState.Begin)
+			InputBindableFunction:Invoke(
+				"InteractButton",
+				Enum.UserInputState.Begin
+			)
 		end
 	end
 end)
