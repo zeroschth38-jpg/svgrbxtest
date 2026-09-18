@@ -26,7 +26,7 @@ local Targets = {
 	Vector3.new(-1792, 175, 2769),
 }
 
-local VERSION = "v1.0"
+local VERSION = "v1.1"
 
 --// Farm Area
 local FARM_CENTER = Vector3.new(-1715, 173, 2798)
@@ -58,10 +58,19 @@ local BLOCK_COOLDOWN        = 3
 local DEATH_COUNT           = 0
 
 --// Realtime Mob Detection
-local MOB_DETECTION_DISTANCE   = 200
-local MOB_VALIDATION_INTERVAL  = 0.15
-local LAST_MOB_VALIDATION_TIME = 0
-local DISTANCE_Y_CALCULATE     = false
+local MOB_DETECTION_DISTANCE       = 200
+local MOB_VALIDATION_INTERVAL      = 0.15
+local LAST_MOB_VALIDATION_TIME     = 0
+local DISTANCE_Y_CALCULATE         = false
+local TARGET_UNREACHABLE_TIMEOUT   = 3
+local TARGET_REPOSITION_INTERVAL   = 0.4
+local TARGET_REPOSITION_RADIUS     = 12
+local TARGET_REPOSITION_DIRECTIONS = 12
+
+local TargetUnreachableSince = nil
+local TargetApproachPosition = nil
+local TargetApproachMob      = nil
+local LastTargetRepositionTime = 0
 
 local ValidMobs = {}
 
@@ -126,6 +135,14 @@ end
 
 updateCharacter()
 
+--// Target Reposition
+local function ResetTargetReposition()
+	TargetUnreachableSince   = nil
+	TargetApproachPosition   = nil
+	TargetApproachMob        = nil
+	LastTargetRepositionTime = 0
+end
+
 Player.CharacterAdded:Connect(function()
 	task.wait()
 
@@ -144,6 +161,7 @@ Player.CharacterAdded:Connect(function()
 	end)
 
 	updateCharacter()
+	ResetTargetReposition()
 end)
 
 --// UI
@@ -201,7 +219,7 @@ HeaderCorner.Parent = Header
 
 local HeaderMask = Instance.new("Frame")
 HeaderMask.Size = UDim2.fromScale(1, 0.25)
-HeaderMask.Position = UDim2.fromScale(0, 0, 1, -0.25)
+HeaderMask.Position = UDim2.fromScale(0, 0)
 HeaderMask.BackgroundColor3 = UI_SURFACE
 HeaderMask.BorderSizePixel = 0
 HeaderMask.Parent = Header
@@ -2057,6 +2075,137 @@ local function RetreatFromGoblins()
 	end
 end
 
+local function IsApproachPositionClear(TargetPosition, Goblin)
+	if not RootPart or not TargetPosition then
+		return false
+	end
+
+	if not IsInsideFarmArea(TargetPosition) then
+		return false
+	end
+
+	if IsWaterAtPosition(TargetPosition, Goblin) then
+		return false
+	end
+
+	if IsPathThroughWater(TargetPosition) then
+		return false
+	end
+
+	if IsPathThroughDeadzone(TargetPosition) then
+		return false
+	end
+
+	local Origin    = RootPart.Position
+	local Direction = TargetPosition - Origin
+
+	if Direction.Magnitude <= 0 then
+		return true
+	end
+
+	local RaycastParams = RaycastParams.new()
+	RaycastParams.FilterType = Enum.RaycastFilterType.Exclude
+	RaycastParams.FilterDescendantsInstances = {
+		Character,
+		Goblin,
+	}
+
+	local Result = workspace:Raycast(
+		Origin,
+		Direction,
+		RaycastParams
+	)
+
+	return Result == nil
+end
+
+local function CanSeeGoblinFromPosition(Position, Goblin)
+	if not Position or not Goblin then
+		return false
+	end
+
+	local MobRoot = Goblin:FindFirstChild("HumanoidRootPart")
+
+	if not MobRoot then
+		return false
+	end
+
+	local Direction = MobRoot.Position - Position
+
+	if Direction.Magnitude <= 0 then
+		return true
+	end
+
+	local RaycastParams = RaycastParams.new()
+	RaycastParams.FilterType = Enum.RaycastFilterType.Exclude
+	RaycastParams.FilterDescendantsInstances = {
+		Character,
+		Goblin,
+	}
+
+	local Result = workspace:Raycast(
+		Position,
+		Direction,
+		RaycastParams
+	)
+
+	return Result == nil
+end
+
+local function GetTargetRepositionPosition(Goblin)
+	if not RootPart or not Goblin then
+		return nil
+	end
+
+	local MobRoot = Goblin:FindFirstChild("HumanoidRootPart")
+
+	if not MobRoot then
+		return nil
+	end
+
+	local BestPosition = nil
+	local BestScore    = math.huge
+
+	for Index = 0, TARGET_REPOSITION_DIRECTIONS - 1 do
+		local Angle = (math.pi * 2 / TARGET_REPOSITION_DIRECTIONS) * Index
+
+		local Direction = Vector3.new(
+			math.cos(Angle),
+			0,
+			math.sin(Angle)
+		)
+
+		local CandidatePosition = MobRoot.Position + Direction * TARGET_REPOSITION_RADIUS
+
+		if not IsApproachPositionClear(CandidatePosition, Goblin) then
+			continue
+		end
+
+		if not CanSeeGoblinFromPosition(CandidatePosition, Goblin) then
+			continue
+		end
+
+		local Offset   = CandidatePosition - RootPart.Position
+		local Distance = Vector3.new(Offset.X, 0, Offset.Z).Magnitude
+
+		local TargetOffset = CandidatePosition - MobRoot.Position
+		local TargetDistance = Vector3.new(
+			TargetOffset.X,
+			0,
+			TargetOffset.Z
+		).Magnitude
+
+		local Score = Distance + TargetDistance * 0.15
+
+		if Score < BestScore then
+			BestScore    = Score
+			BestPosition = CandidatePosition
+		end
+	end
+
+	return BestPosition
+end
+
 --// Move To Goblin
 local function MoveToGoblin(Goblin)
 	if not Goblin or not RootPart then
@@ -2070,6 +2219,7 @@ local function MoveToGoblin(Goblin)
 			ClosestTarget = nil
 		end
 
+		ResetTargetReposition()
 		return
 	end
 
@@ -2082,27 +2232,18 @@ local function MoveToGoblin(Goblin)
 		end
 
 		ValidMobs[Goblin] = nil
+		ResetTargetReposition()
+
 		return
+	end
+
+	--// If the target changed, reset all reposition state.
+	if TargetApproachMob ~= Goblin then
+		ResetTargetReposition()
+		TargetApproachMob = Goblin
 	end
 
 	local TargetPosition = MobRoot.Position
-
-	--// Target remains locked even if LOS/path temporarily fails.
-	--// Just stop moving and wait for the same target.
-	if not CanSeeGoblin(Goblin) then
-		Humanoid:Move(Vector3.zero)
-		return
-	end
-
-	if IsPathThroughWater(TargetPosition) then
-		Humanoid:Move(Vector3.zero)
-		return
-	end
-
-	if IsPathThroughDeadzone(TargetPosition) then
-		Humanoid:Move(Vector3.zero)
-		return
-	end
 
 	local Offset   = TargetPosition - RootPart.Position
 	local Distance = Vector3.new(Offset.X, 0, Offset.Z).Magnitude
@@ -2111,12 +2252,75 @@ local function MoveToGoblin(Goblin)
 		Distance = Offset.Magnitude
 	end
 
+	--// Already close enough to the target.
 	if Distance <= GOBLIN_REACH_DISTANCE then
 		Humanoid:Move(Vector3.zero)
+		ResetTargetReposition()
+		TargetApproachMob = Goblin
 		return
 	end
 
-	Humanoid:MoveTo(TargetPosition)
+	--// Direct route is available.
+	local DirectPathBlocked =
+		not CanSeeGoblin(Goblin)
+		or IsPathThroughWater(TargetPosition)
+		or IsPathThroughDeadzone(TargetPosition)
+
+	if not DirectPathBlocked then
+		TargetUnreachableSince = nil
+		TargetApproachPosition = nil
+
+		Humanoid:MoveTo(TargetPosition)
+		return
+	end
+
+	--// Target is temporarily blocked.
+	--// Start the unreachable timer, but DO NOT immediately switch target.
+	if not TargetUnreachableSince then
+		TargetUnreachableSince = os.clock()
+	end
+
+	local now = os.clock()
+
+	--// Recalculate an approach position periodically.
+	if not TargetApproachPosition
+		or now - LastTargetRepositionTime >= TARGET_REPOSITION_INTERVAL
+	then
+		LastTargetRepositionTime = now
+
+		local NewApproachPosition = GetTargetRepositionPosition(Goblin)
+
+		TargetApproachPosition = NewApproachPosition
+	end
+
+	--// We found a way around the blocking mob.
+	if TargetApproachPosition then
+		local ApproachOffset   = TargetApproachPosition - RootPart.Position
+		local ApproachDistance = Vector3.new(
+			ApproachOffset.X,
+			0,
+			ApproachOffset.Z
+		).Magnitude
+
+		if ApproachDistance <= 3 then
+			TargetApproachPosition = nil
+		else
+			Humanoid:MoveTo(TargetApproachPosition)
+			return
+		end
+	end
+
+	--// No valid approach position was found.
+	Humanoid:Move(Vector3.zero)
+
+	--// Target has been unreachable for too long.
+	if now - TargetUnreachableSince >= TARGET_UNREACHABLE_TIMEOUT then
+		if ClosestTarget == Goblin then
+			ClosestTarget = nil
+		end
+
+		ResetTargetReposition()
+	end
 end
 
 local function DoJump()
@@ -2196,7 +2400,7 @@ RunService.Heartbeat:Connect(function()
 	local MainWeld = Sword:FindFirstChild("MainWeld", true)
 
 	--// Emergency Retreat
-	if Humanoid.Health <= Humanoid.MaxHealth * 0.4 then
+	if ( Humanoid.Health <= Humanoid.MaxHealth * 0.4 or Humanoid.WalkSpeed < 38 ) then
 		RETREATING = true
 	elseif RETREATING and Humanoid.Health >= Humanoid.MaxHealth * 0.8 then
 		RETREATING = false
