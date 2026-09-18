@@ -2473,6 +2473,7 @@ RunService.Heartbeat:Connect(function()
 
 	--// Emergency Retreat
 	local EmergencyHealth = Humanoid.Health <= Humanoid.MaxHealth * 0.4
+	local ShouldHeal      = Humanoid.Health <= Humanoid.MaxHealth * 0.65
 	if ( EmergencyHealth or Humanoid.WalkSpeed < 38 ) then
 		RETREATING = true
 	elseif RETREATING and Humanoid.Health >= Humanoid.MaxHealth * 0.8 then
@@ -2494,7 +2495,7 @@ RunService.Heartbeat:Connect(function()
 			return
 		end
 
-		if UseConsumable and PlayerStats and not Equipped and EmergencyHealth then
+		if UseConsumable and PlayerStats and not Equipped and (EmergencyHealth or ShouldHeal) then
 			local LastConsumed = PlayerStats:FindFirstChild("LastConsumed")
 
 			if LastConsumed
