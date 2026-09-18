@@ -26,7 +26,7 @@ local Targets = {
 	Vector3.new(-1792, 175, 2769),
 }
 
-local VERSION = "v1.21"
+local VERSION = "v1.22"
 
 --// Farm Area
 local FARM_CENTER = Vector3.new(-1715, 173, 2798)
@@ -34,7 +34,7 @@ local FARM_RADIUS = 200
 
 --// Farm Deadzone
 local FARM_DEADZONE_CENTER = Vector3.new(-1681, 173, 2821)
-local FARM_DEADZONE_RADIUS = 30
+local FARM_DEADZONE_RADIUS = 35
 
 local Character
 local Humanoid
