@@ -2476,7 +2476,7 @@ RunService.Heartbeat:Connect(function()
 	local ShouldHeal      = Humanoid.Health <= Humanoid.MaxHealth * 0.65
 	if ( EmergencyHealth or Humanoid.WalkSpeed < 38 ) then
 		RETREATING = true
-	elseif RETREATING and Humanoid.Health >= Humanoid.MaxHealth * 0.8 then
+	elseif RETREATING and Humanoid.Health >= Humanoid.MaxHealth * 0.7 then
 		RETREATING = false
 	end
 
