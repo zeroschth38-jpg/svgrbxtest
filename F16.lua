@@ -2400,7 +2400,8 @@ RunService.Heartbeat:Connect(function()
 	local MainWeld = Sword:FindFirstChild("MainWeld", true)
 
 	--// Emergency Retreat
-	if ( Humanoid.Health <= Humanoid.MaxHealth * 0.4 or Humanoid.WalkSpeed < 38 ) then
+	local EmergencyHealth = Humanoid.Health <= Humanoid.MaxHealth * 0.4
+	if ( EmergencyHealth or Humanoid.WalkSpeed < 38 ) then
 		RETREATING = true
 	elseif RETREATING and Humanoid.Health >= Humanoid.MaxHealth * 0.8 then
 		RETREATING = false
@@ -2421,7 +2422,7 @@ RunService.Heartbeat:Connect(function()
 			return
 		end
 
-		if UseConsumable and PlayerStats and not Equipped then
+		if UseConsumable and PlayerStats and not Equipped and EmergencyHealth then
 			local LastConsumed = PlayerStats:FindFirstChild("LastConsumed")
 
 			if LastConsumed
