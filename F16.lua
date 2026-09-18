@@ -26,7 +26,7 @@ local Targets = {
 	Vector3.new(-1792, 175, 2769),
 }
 
-local VERSION = "v1.0"
+local VERSION = "v0.99"
 
 --// Farm Area
 local FARM_CENTER = Vector3.new(-1715, 173, 2798)
@@ -970,6 +970,8 @@ local function CreateEnemyPickerRow(EntityName, Index)
 		updatePriorityUI()
 		RefreshEnemyPicker()
 	end)
+
+	UpdateEnemyPickerLayout()
 end
 
 RefreshEnemyPicker = function()
