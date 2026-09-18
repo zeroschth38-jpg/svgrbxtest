@@ -26,7 +26,7 @@ local Targets = {
 	Vector3.new(-1792, 175, 2769),
 }
 
-local VERSION = "v1.2"
+local VERSION = "v1.21"
 
 --// Farm Area
 local FARM_CENTER = Vector3.new(-1715, 173, 2798)
@@ -2344,6 +2344,57 @@ local function MoveToGoblin(Goblin)
 	end
 end
 
+local function IsCombatTargetValid(Mob)
+	if not Mob or not Mob:IsA("Model") then
+		return false
+	end
+
+	if not Mob:IsDescendantOf(workspace) then
+		return false
+	end
+
+	if not RootPart then
+		return false
+	end
+
+	local MobFolder = workspace:FindFirstChild("Mobs")
+
+	if not MobFolder or not Mob:IsDescendantOf(MobFolder) then
+		return false
+	end
+
+	local Config = Mob:FindFirstChild("Config")
+	local MobHumanoid = Mob:FindFirstChildOfClass("Humanoid")
+	local MobRoot = Mob:FindFirstChild("HumanoidRootPart")
+
+	if not Config or not MobHumanoid or not MobRoot then
+		return false
+	end
+
+	local Entity = Config:FindFirstChild("Entity")
+
+	if not Entity or not Entity:IsA("StringValue") then
+		return false
+	end
+
+	if not IsEntityInPriority(Entity.Value) then
+		return false
+	end
+
+	if MobHumanoid.Health <= 0 then
+		return false
+	end
+
+	local Offset   = MobRoot.Position - RootPart.Position
+	local Distance = Vector3.new(Offset.X, 0, Offset.Z).Magnitude
+
+	if DISTANCE_Y_CALCULATE then
+		Distance = Offset.Magnitude
+	end
+
+	return Distance <= 50
+end
+
 local function DoJump()
 	if not Humanoid then
 		return
@@ -2561,7 +2612,7 @@ RunService.Heartbeat:Connect(function()
 
 			--// Combat still requires the target to be fully valid.
 			--// If LOS/path/deadzone fails, simply wait for the same target.
-			if not IsValidMob(ClosestTarget) then
+			if not IsCombatTargetValid(ClosestTarget) then
 				Humanoid:Move(Vector3.zero)
 				return
 			end
@@ -2585,16 +2636,14 @@ RunService.Heartbeat:Connect(function()
 					Distance = Offset.Magnitude
 				end
 
-				if Distance <= 50 then
-					--// ATTACK
-					if now - LAST_ATTACK_TIME >= ATTACK_INTERVAL then
-						LAST_ATTACK_TIME = now
+				--// ATTACK
+				if now - LAST_ATTACK_TIME >= ATTACK_INTERVAL then
+					LAST_ATTACK_TIME = now
 
-						InputBindableFunction:Invoke(
-							"AttackButton",
-							Enum.UserInputState.Begin
-						)
-					end
+					InputBindableFunction:Invoke(
+						"AttackButton",
+						Enum.UserInputState.Begin
+					)
 				end
 
 				if Distance <= (25) then
