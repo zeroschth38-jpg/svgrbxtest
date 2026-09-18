@@ -26,7 +26,7 @@ local Targets = {
 	Vector3.new(-1792, 175, 2769),
 }
 
-local VERSION = "v0.99"
+local VERSION = "v1.0"
 
 --// Farm Area
 local FARM_CENTER = Vector3.new(-1715, 173, 2798)
@@ -58,9 +58,10 @@ local BLOCK_COOLDOWN        = 3
 local DEATH_COUNT           = 0
 
 --// Realtime Mob Detection
-local MOB_DETECTION_DISTANCE  = 200
-local MOB_VALIDATION_INTERVAL = 0.15
+local MOB_DETECTION_DISTANCE   = 200
+local MOB_VALIDATION_INTERVAL  = 0.15
 local LAST_MOB_VALIDATION_TIME = 0
+local DISTANCE_Y_CALCULATE     = false
 
 local ValidMobs = {}
 
@@ -1689,7 +1690,11 @@ local function IsTargetLockValid(Mob)
 		return false
 	end
 
-	local Distance = (MobRoot.Position - RootPart.Position).Magnitude
+	local Offset   = MobRoot.Position - RootPart.Position
+	local Distance = Vector3.new(Offset.X, 0, Offset.Z).Magnitude
+	if DISTANCE_Y_CALCULATE then
+		Distance = Offset.Magnitude
+	end
 
 	if Distance > MOB_DETECTION_DISTANCE then
 		return false
@@ -1753,7 +1758,11 @@ local function IsValidMob(Mob)
 		return false
 	end
 
-	local Distance = (MobRoot.Position - RootPart.Position).Magnitude
+	local Offset   = MobRoot.Position - RootPart.Position
+	local Distance = Vector3.new(Offset.X, 0, Offset.Z).Magnitude
+	if DISTANCE_Y_CALCULATE then
+		Distance = Offset.Magnitude
+	end
 
 	if Distance > MOB_DETECTION_DISTANCE then
 		return false
@@ -1855,7 +1864,11 @@ local function GetClosestGoblin()
 			continue
 		end
 
-		local Distance = (MobRoot.Position - RootPart.Position).Magnitude
+		local Offset   = MobRoot.Position - RootPart.Position
+		local Distance = Vector3.new(Offset.X, 0, Offset.Z).Magnitude
+		if DISTANCE_Y_CALCULATE then
+			Distance = Offset.Magnitude
+		end
 
 		if Priority < BestPriority
 			or (Priority == BestPriority and Distance < BestDistance)
@@ -2089,7 +2102,14 @@ local function MoveToGoblin(Goblin)
 		return
 	end
 
-	if (RootPart.Position - TargetPosition).Magnitude <= GOBLIN_REACH_DISTANCE then
+	local Offset   = TargetPosition - RootPart.Position
+	local Distance = Vector3.new(Offset.X, 0, Offset.Z).Magnitude
+
+	if DISTANCE_Y_CALCULATE then
+		Distance = Offset.Magnitude
+	end
+
+	if Distance <= GOBLIN_REACH_DISTANCE then
 		Humanoid:Move(Vector3.zero)
 		return
 	end
@@ -2332,7 +2352,11 @@ RunService.Heartbeat:Connect(function()
 			local PlayerOffset = ClosestTarget:FindFirstChild("PlayerOffset", true)
 
 			if MobHumanoid and MobRoot and MobHumanoid.Health > 0 then
-				local Distance = (RootPart.Position - MobRoot.Position).Magnitude
+				local Offset   = MobRoot.Position - RootPart.Position
+				local Distance = Vector3.new(Offset.X, 0, Offset.Z).Magnitude
+				if DISTANCE_Y_CALCULATE then
+					Distance = Offset.Magnitude
+				end
 
 				if Distance <= 30 then
 					--// ATTACK
@@ -2345,7 +2369,7 @@ RunService.Heartbeat:Connect(function()
 						)
 					end
 				end
-					
+
 				if Distance <= (PlayerOffset and PlayerOffset.Value + 2 or GOBLIN_REACH_DISTANCE) then
 
 					--// SKILL
