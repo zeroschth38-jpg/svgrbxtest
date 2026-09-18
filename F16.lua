@@ -26,7 +26,7 @@ local Targets = {
 	Vector3.new(-1792, 175, 2769),
 }
 
-local VERSION = "v1.1"
+local VERSION = "v1.2"
 
 --// Farm Area
 local FARM_CENTER = Vector3.new(-1715, 173, 2798)
@@ -75,9 +75,16 @@ local LastTargetRepositionTime = 0
 local ValidMobs = {}
 
 --// Retreat
-local RETREAT_DISTANCE   = 30
+local RETREAT_DISTANCE   = 60
 local RETREAT_DIRECTIONS = 16
 local RETREATING         = false
+
+local RETREAT_RECALCULATE_INTERVAL = 0.5
+local RETREAT_NO_POSITION_TIMEOUT  = 1.5
+
+local LastRetreatPosition      = nil
+local LastRetreatCalculateTime = 0
+local RetreatNoPositionSince   = nil
 
 --// Player Combat
 local ATTACK_INTERVAL  = 0.2
@@ -2066,7 +2073,21 @@ end
 
 --// Retreat
 local function RetreatFromGoblins()
-	local RetreatPosition = GetRetreatPosition()
+	local RetreatPosition = nil
+
+	if LastRetreatPosition and os.clock() - LastRetreatCalculateTime < RETREAT_RECALCULATE_INTERVAL then
+		RetreatPosition = LastRetreatPosition
+	else
+		RetreatPosition = GetRetreatPosition()
+
+		if RetreatPosition then
+			LastRetreatPosition      = RetreatPosition
+			LastRetreatCalculateTime = os.clock()
+			RetreatNoPositionSince   = nil
+		elseif not RetreatNoPositionSince then
+			RetreatNoPositionSince = os.clock()
+		end
+	end
 
 	if RetreatPosition then
 		Humanoid:MoveTo(RetreatPosition)
@@ -2400,8 +2421,7 @@ RunService.Heartbeat:Connect(function()
 	local MainWeld = Sword:FindFirstChild("MainWeld", true)
 
 	--// Emergency Retreat
-	local EmergencyHealth = Humanoid.Health <= Humanoid.MaxHealth * 0.4
-	if ( EmergencyHealth or Humanoid.WalkSpeed < 38 ) then
+	if ( Humanoid.Health <= Humanoid.MaxHealth * 0.4 or Humanoid.WalkSpeed < 38 ) then
 		RETREATING = true
 	elseif RETREATING and Humanoid.Health >= Humanoid.MaxHealth * 0.8 then
 		RETREATING = false
@@ -2422,7 +2442,7 @@ RunService.Heartbeat:Connect(function()
 			return
 		end
 
-		if UseConsumable and PlayerStats and not Equipped and EmergencyHealth then
+		if UseConsumable and PlayerStats and not Equipped then
 			local LastConsumed = PlayerStats:FindFirstChild("LastConsumed")
 
 			if LastConsumed
