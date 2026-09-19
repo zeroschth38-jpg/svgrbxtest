@@ -56,11 +56,11 @@ local GOBLIN_REACH_DISTANCE = 8
 
 --// Player attack distance.
 --// Increase this if your weapon can hit farther away.
-local PLAYER_ATTACK_DISTANCE = 10
+local PLAYER_ATTACK_DISTANCE = 8
 
 --// Enemy Blade safety.
 --// This is the extra distance kept outside the actual BladePart.
-local ENEMY_ATTACK_SAFE_DISTANCE = 4
+local ENEMY_ATTACK_SAFE_DISTANCE = 3
 local ENEMY_BLADE_PADDING        = 3
 
 --// How far from the target we consider other mobs to be part
