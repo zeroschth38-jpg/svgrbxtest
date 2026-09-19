@@ -151,9 +151,9 @@ local function ResetTargetReposition()
 end
 
 --// Toggle Screen GUI
-local ToggleScreenGUI    = PlayerGui:FindFirstChild("ToggleScreenGUI")
-local ToggleContainer    = ToggleScreenGUI:FindFirstChild("ToggleContainer")
-local ToggleUIListLayout = ToggleContainer:FindFirstChild("UIListLayout")
+local ToggleScreenGUI
+local ToggleContainer
+local ToggleUIListLayout
 
 local function CreateToggleContainer()
 	if not ToggleScreenGUI then
@@ -162,6 +162,7 @@ local function CreateToggleContainer()
 		ToggleScreenGUI.IgnoreGuiInset = true
 		ToggleScreenGUI.Parent = PlayerGui
 	end
+
 	if not ToggleContainer then
 		ToggleContainer = Instance.new("Frame")
 		ToggleContainer.Name = "ToggleContainer"
@@ -170,6 +171,7 @@ local function CreateToggleContainer()
 		ToggleContainer.BackgroundTransparency = 1
 		ToggleContainer.Parent = ToggleScreenGUI
 	end
+
 	if not ToggleUIListLayout then
 		ToggleUIListLayout = Instance.new("UIListLayout")
 		ToggleUIListLayout.Padding = UDim.new(0, 10)
