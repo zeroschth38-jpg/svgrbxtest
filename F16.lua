@@ -26,7 +26,7 @@ local Targets = {
 	Vector3.new(-1792, 175, 2769),
 }
 
-local VERSION = "v1.23"
+local VERSION = "v1.24"
 
 --// Farm Area
 local FARM_CENTER = Vector3.new(-1715, 173, 2798)
@@ -151,7 +151,7 @@ local function updateCharacter()
 		FaceAttachment.Name = "FaceGoblinAttachment"
 		FaceAttachment.Parent = RootPart
 	end
-	
+
 	if not FaceOrientation then
 		FaceOrientation = Instance.new("AlignOrientation")
 		FaceOrientation.Name = "FaceGoblin"
@@ -163,7 +163,7 @@ local function updateCharacter()
 		FaceOrientation.Enabled = false
 		FaceOrientation.Parent = RootPart
 	end
-	
+
 	task.defer(function()
 		if not Humanoid then
 			return
@@ -2255,6 +2255,11 @@ local function GetSafeCombatPosition(TargetMob)
 
 	--// Start from the distance our own weapon wants.
 	local CombatDistance = PLAYER_ATTACK_DISTANCE
+	if TargetMob:FindFirstChild("LastAttacker") then
+		if TargetMob:FindFirstChild("LastAttacker").Value ~= Player then
+			CombatDistance = CombatDistance / 2
+		end
+	end
 
 	--// Make sure we don't enter the BladePart danger zone
 	--// of any mob in the group.
@@ -2760,8 +2765,9 @@ local function MoveToGoblin(Goblin)
 				and not IsPathThroughWater(RetreatPosition)
 				and not IsPathThroughDeadzone(RetreatPosition)
 			then
-				Humanoid.AutoRotate = true
+				Humanoid.AutoRotate = false
 				Humanoid:MoveTo(RetreatPosition)
+				FaceGoblin(Goblin)
 			else
 				Humanoid:Move(PushDirection)
 			end
