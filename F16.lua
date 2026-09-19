@@ -6,7 +6,7 @@ local UserInputService   = game:GetService("UserInputService")
 local MarketplaceService = game:GetService("MarketplaceService")
 
 local Player    = Players.LocalPlayer
-local PlayerGui = Player:WaitForChild("PlayerGui")
+local PlayerGui = Player:WaitForChild("PlayerGui", 10)
 
 local CONFIG = {
 	Targets = {
@@ -26,7 +26,7 @@ local CONFIG = {
 		Vector3.new(-1654, 174, 2619),
 		Vector3.new(-1792, 175, 2769),
 	},
-	VERSION = "v1.36",
+	VERSION = "v1.37",
 
 	FARM_CENTER = Vector3.new(-1715, 173, 2798),
 	FARM_RADIUS = 200,
@@ -134,7 +134,7 @@ local Feature = {
 		Status = nil,
 	},
 	ResetOnBoostOut = {
-		Enabled = false,
+		Enabled = true,
 		Button = nil,
 		Status = nil,
 	},
@@ -2281,30 +2281,88 @@ function GetThreatEscapePosition(TargetMob, ThreatMob)
 	end
 
 	local ThreatRoot = ThreatMob:FindFirstChild("HumanoidRootPart")
-	if not ThreatRoot then
+	local TargetRoot = TargetMob and TargetMob:FindFirstChild("HumanoidRootPart")
+
+	if not ThreatRoot or not TargetRoot then
 		return nil
 	end
 
-	local Away = RootPart.Position - ThreatRoot.Position
-	local Direction = Vector3.new(Away.X, 0, Away.Z)
+	local Origin = RootPart.Position
+	local Away = Origin - ThreatRoot.Position
+	local AwayDirection = Vector3.new(Away.X, 0, Away.Z)
 
-	if Direction.Magnitude <= 0.01 then
+	if AwayDirection.Magnitude <= 0.01 then
 		return nil
 	end
 
-	Direction = Direction.Unit
+	AwayDirection = AwayDirection.Unit
 
-	local Candidate = RootPart.Position + Direction * CONFIG.THREAT_ESCAPE_DISTANCE
+	--// Try several directions instead of blindly retreating straight back.
+	--// This prevents Safe Distance from pushing the player into a wall,
+	--// corner, or narrow gap when the direct retreat path is blocked.
+	local Directions = {
+		AwayDirection,
+		CFrame.fromAxisAngle(Vector3.yAxis, math.rad(45)):VectorToWorldSpace(AwayDirection),
+		CFrame.fromAxisAngle(Vector3.yAxis, math.rad(-45)):VectorToWorldSpace(AwayDirection),
+		CFrame.fromAxisAngle(Vector3.yAxis, math.rad(90)):VectorToWorldSpace(AwayDirection),
+		CFrame.fromAxisAngle(Vector3.yAxis, math.rad(-90)):VectorToWorldSpace(AwayDirection),
+		CFrame.fromAxisAngle(Vector3.yAxis, math.rad(135)):VectorToWorldSpace(AwayDirection),
+		CFrame.fromAxisAngle(Vector3.yAxis, math.rad(-135)):VectorToWorldSpace(AwayDirection),
+	}
 
-	if not IsInsideFarmArea(Candidate)
-		or IsWaterAtPosition(Candidate, TargetMob)
-		or IsPathThroughWater(Candidate)
-		or IsPathThroughDeadzone(Candidate)
-	then
-		return nil
+	local CurrentTargetDistance = GetHorizontalDistance(Origin, TargetRoot.Position)
+	local BestPosition = nil
+	local BestScore = math.huge
+
+	for Index, Direction in ipairs(Directions) do
+		Direction = Vector3.new(Direction.X, 0, Direction.Z)
+
+		if Direction.Magnitude <= 0.01 then
+			continue
+		end
+
+		Direction = Direction.Unit
+
+		--// Prefer shorter movement when multiple escape directions are safe.
+		local Candidate = Origin + Direction * CONFIG.THREAT_ESCAPE_DISTANCE
+
+		if not IsInsideFarmArea(Candidate)
+			or IsWaterAtPosition(Candidate, TargetMob)
+			or IsPathThroughWater(Candidate)
+			or IsPathThroughDeadzone(Candidate)
+			or IsPathThroughBladeGroupDanger(Candidate, TargetMob)
+			or not IsEscapePathClear(Candidate)
+		then
+			continue
+		end
+
+		--// Keep enough space from the threat while avoiding a huge
+		--// increase in distance from the primary target.
+		local ThreatDistance = GetHorizontalDistance(Candidate, ThreatRoot.Position)
+		local TargetDistance = GetHorizontalDistance(Candidate, TargetRoot.Position)
+
+		--// Penalize positions that move much farther from the primary target.
+		local TargetDistancePenalty = math.max(0, TargetDistance - CurrentTargetDistance) * 0.35
+
+		--// Prefer directions closer to directly away from the threat.
+		local DirectionPenalty = (1 - math.clamp(AwayDirection:Dot(Direction), -1, 1)) * 2
+
+		local Score = TargetDistancePenalty + DirectionPenalty + Index * 0.01
+
+		if ThreatDistance > CONFIG.THREAT_DETECTION_DISTANCE
+			and Score < BestScore
+		then
+			BestScore = Score
+			BestPosition = Candidate
+		elseif ThreatDistance > CONFIG.ENEMY_ATTACK_SAFE_DISTANCE
+			and Score < BestScore
+		then
+			BestScore = Score
+			BestPosition = Candidate
+		end
 	end
 
-	return Candidate
+	return BestPosition
 end
 
 --// ============================================================
@@ -2749,7 +2807,27 @@ function IsEscapePathClear(TargetPosition)
 		Character,
 	}
 
-	return workspace:Raycast(Origin, Direction, RaycastParams) == nil
+	if workspace:Raycast(Origin, Direction, RaycastParams) then
+		return false
+	end
+
+	--// Also check the character's physical width so the center point
+	--// cannot pass a wall while the character body gets stuck on it.
+	local BlockcastSize = Vector3.new(
+		math.max(RootPart.Size.X, 2.5),
+		math.max(RootPart.Size.Y, 4),
+		math.max(RootPart.Size.Z, 2.5)
+	)
+
+	local BlockcastCFrame = CFrame.new(Origin)
+	local BlockcastResult = workspace:Blockcast(
+		BlockcastCFrame,
+		BlockcastSize,
+		Direction,
+		RaycastParams
+	)
+
+	return BlockcastResult == nil
 end
 
 function GetDeadzoneEscapePosition()
@@ -3256,12 +3334,16 @@ function MoveToGoblin(Goblin)
 				and not IsWaterAtPosition(RetreatPosition, Goblin)
 				and not IsPathThroughWater(RetreatPosition)
 				and not IsPathThroughDeadzone(RetreatPosition)
+				and not IsPathThroughBladeGroupDanger(RetreatPosition, Goblin)
+				and IsEscapePathClear(RetreatPosition)
 			then
 				Humanoid.AutoRotate = false
 				Humanoid:MoveTo(RetreatPosition)
 				FaceGoblin(Goblin)
 			else
+				Humanoid.AutoRotate = false
 				Humanoid:Move(PushDirection)
+				FaceGoblin(Goblin)
 			end
 		else
 			--FaceOrientation.Enabled = false
@@ -3290,9 +3372,10 @@ function MoveToGoblin(Goblin)
 
 		--// Already at the desired safe position.
 		if Distance <= 2 then
-			--FaceOrientation.Enabled = false
-			Humanoid.AutoRotate = true
+			--// Stop movement but keep the character locked onto the target.
+			Humanoid.AutoRotate = false
 			Humanoid:Move(Vector3.zero)
+			FaceGoblin(Goblin)
 
 			TargetUnreachableSince = nil
 			TargetApproachPosition = nil
@@ -3654,7 +3737,7 @@ RunService.Heartbeat:Connect(function()
 		if ClosestTarget then
 			MoveToGoblin(ClosestTarget)
 		else
-			--FaceOrientation.Enabled = false
+			FaceOrientation.Enabled = false
 			Humanoid.AutoRotate = true
 			Humanoid:Move(Vector3.zero)
 		end
@@ -3684,7 +3767,7 @@ RunService.Heartbeat:Connect(function()
 			end
 
 			if not IsCombatTargetValid(ClosestTarget) then
-				--FaceOrientation.Enabled = false
+				FaceOrientation.Enabled = false
 				Humanoid.AutoRotate = true
 				Humanoid:Move(Vector3.zero)
 				return
