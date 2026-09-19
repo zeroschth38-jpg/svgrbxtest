@@ -3359,9 +3359,10 @@ RunService.Heartbeat:Connect(function()
 		return
 	end
 
+	local PlayerStats = Player:FindFirstChild("PlayerStats")
 	local Sword = Character:FindFirstChild("Sword")
 
-	if not Sword or not Sword:FindFirstChild("MainWeld", true) then
+	if not Sword or not Sword:FindFirstChild("MainWeld", true) or not PlayerStats then
 		return
 	end
 
@@ -3375,7 +3376,7 @@ RunService.Heartbeat:Connect(function()
 	local EmergencyHealth = Humanoid.Health <= Humanoid.MaxHealth * 0.4
 	local ShouldHeal      = Humanoid.Health <= Humanoid.MaxHealth * 0.65
 
-	if EmergencyHealth or Humanoid.WalkSpeed < 38 then
+	if EmergencyHealth or (PlayerStats.Level.Value >= 400 and Humanoid.WalkSpeed < 38) then
 		RETREATING = true
 	elseif RETREATING and Humanoid.Health >= Humanoid.MaxHealth * 0.7 then
 		RETREATING = false
