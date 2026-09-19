@@ -3468,7 +3468,7 @@ RunService.Heartbeat:Connect(function()
 	--// Movement
 	local target = CONFIG.Targets[CONFIG.CURRENT_WAYPOINT_TARGET]
 
-	if not Feature.AutoFind.Enabled and CONFIG.CURRENT_WAYPOINT_TARGET < #CONFIG.Targets then
+	if not Feature.AutoFind.Enabled and CONFIG.CURRENT_WAYPOINT_TARGET < #CONFIG.Targets and game.PlaceId == CONFIG.TargetPlaceID then
 		if (RootPart.Position - target).Magnitude <= CONFIG.REACH_DISTANCE then
 			CONFIG.CURRENT_WAYPOINT_TARGET += 1
 			target = CONFIG.Targets[CONFIG.CURRENT_WAYPOINT_TARGET]
