@@ -26,7 +26,7 @@ local Targets = {
 	Vector3.new(-1792, 175, 2769),
 }
 
-local VERSION = "v1.22"
+local VERSION = "v1.23"
 
 --// Farm Area
 local FARM_CENTER = Vector3.new(-1715, 173, 2798)
@@ -53,9 +53,23 @@ local ClosestTarget = nil
 
 local REACH_DISTANCE        = 5
 local GOBLIN_REACH_DISTANCE = 8
-local JUMP_HEIGHT           = 3
-local BLOCK_COOLDOWN        = 3
-local DEATH_COUNT           = 0
+
+--// Player attack distance.
+--// Increase this if your weapon can hit farther away.
+local PLAYER_ATTACK_DISTANCE = 10
+
+--// Enemy Blade safety.
+--// This is the extra distance kept outside the actual BladePart.
+local ENEMY_ATTACK_SAFE_DISTANCE = 4
+local ENEMY_BLADE_PADDING        = 3
+
+--// How far from the target we consider other mobs to be part
+--// of the dangerous group.
+local GROUP_DANGER_DISTANCE = 22
+
+local JUMP_HEIGHT    = 3
+local BLOCK_COOLDOWN = 3
+local DEATH_COUNT    = 0
 
 --// Realtime Mob Detection
 local MOB_DETECTION_DISTANCE       = 200
@@ -65,11 +79,11 @@ local DISTANCE_Y_CALCULATE         = false
 local TARGET_UNREACHABLE_TIMEOUT   = 3
 local TARGET_REPOSITION_INTERVAL   = 0.4
 local TARGET_REPOSITION_RADIUS     = 12
-local TARGET_REPOSITION_DIRECTIONS = 12
+local TARGET_REPOSITION_DIRECTIONS = 16
 
-local TargetUnreachableSince = nil
-local TargetApproachPosition = nil
-local TargetApproachMob      = nil
+local TargetUnreachableSince   = nil
+local TargetApproachPosition   = nil
+local TargetApproachMob        = nil
 local LastTargetRepositionTime = 0
 
 local ValidMobs = {}
@@ -80,7 +94,7 @@ local RETREAT_DIRECTIONS = 16
 local RETREATING         = false
 
 local RETREAT_RECALCULATE_INTERVAL = 0.5
-local RETREAT_NO_POSITION_TIMEOUT  = 1.5
+local RETREAT_NO_POSITION_TIMEOUT   = 1.5
 
 local LastRetreatPosition      = nil
 local LastRetreatCalculateTime = 0
@@ -112,8 +126,12 @@ local EventCurrency  = 0
 
 local TargetPlaceID = 11987539001
 
-local BlockCache   = {}
-local BlockEnabled = true
+local BlockCache                = {}
+local BlockEnabled              = true
+local SafeCombatPositionEnabled = true
+
+local FaceAttachment
+local FaceOrientation
 
 --// Character
 local function updateCharacter()
@@ -128,6 +146,24 @@ local function updateCharacter()
 	Humanoid = Character:FindFirstChildOfClass("Humanoid")
 	RootPart = Character:FindFirstChild("HumanoidRootPart")
 
+	if not FaceAttachment then
+		FaceAttachment = Instance.new("Attachment")
+		FaceAttachment.Name = "FaceGoblinAttachment"
+		FaceAttachment.Parent = RootPart
+	end
+	
+	if not FaceOrientation then
+		FaceOrientation = Instance.new("AlignOrientation")
+		FaceOrientation.Name = "FaceGoblin"
+		FaceOrientation.Mode = Enum.OrientationAlignmentMode.OneAttachment
+		FaceOrientation.Attachment0 = FaceAttachment
+		FaceOrientation.RigidityEnabled = false
+		FaceOrientation.Responsiveness = 25
+		FaceOrientation.MaxTorque = math.huge
+		FaceOrientation.Enabled = false
+		FaceOrientation.Parent = RootPart
+	end
+	
 	task.defer(function()
 		if not Humanoid then
 			return
@@ -159,6 +195,7 @@ local function CreateToggleContainer()
 	if not ToggleScreenGUI then
 		ToggleScreenGUI = Instance.new("ScreenGui")
 		ToggleScreenGUI.Name = "ToggleScreenGUI"
+		ToggleScreenGUI.ResetOnSpawn = false
 		ToggleScreenGUI.IgnoreGuiInset = true
 		ToggleScreenGUI.Parent = PlayerGui
 	end
@@ -182,6 +219,7 @@ local function CreateToggleContainer()
 		ToggleUIListLayout.Parent = ToggleContainer
 	end
 end
+
 CreateToggleContainer()
 
 Player.CharacterAdded:Connect(function()
@@ -194,6 +232,8 @@ Player.CharacterAdded:Connect(function()
 	BlockValue = nil
 	Equipped = false
 	RETREATING = false
+	FaceAttachment = nil
+	FaceOrientation = nil
 
 	table.clear(ValidMobs)
 
@@ -548,10 +588,32 @@ BlockToggleStroke.Thickness = 1
 BlockToggleStroke.Transparency = 0.3
 BlockToggleStroke.Parent = BlockToggle
 
+--// Safe Combat Position Toggle
+local SafeCombatToggle = Instance.new("TextButton")
+SafeCombatToggle.Name = "SafeCombatToggle"
+SafeCombatToggle.LayoutOrder = 6
+SafeCombatToggle.Size = UDim2.fromScale(0.9949, 0.0785)
+SafeCombatToggle.BorderSizePixel = 0
+SafeCombatToggle.TextColor3 = UI_TEXT
+SafeCombatToggle.TextScaled = true
+SafeCombatToggle.Font = Enum.Font.GothamBold
+SafeCombatToggle.AutoButtonColor = false
+SafeCombatToggle.Parent = Content
+
+local SafeCombatToggleCorner = Instance.new("UICorner")
+SafeCombatToggleCorner.CornerRadius = UDim.new(0.205, 0)
+SafeCombatToggleCorner.Parent = SafeCombatToggle
+
+local SafeCombatToggleStroke = Instance.new("UIStroke")
+SafeCombatToggleStroke.Color = UI_BORDER
+SafeCombatToggleStroke.Thickness = 1
+SafeCombatToggleStroke.Transparency = 0.3
+SafeCombatToggleStroke.Parent = SafeCombatToggle
+
 --// Enemy Priority
 local PriorityHeader = Instance.new("TextLabel")
 PriorityHeader.Name = "PriorityHeader"
-PriorityHeader.LayoutOrder = 6
+PriorityHeader.LayoutOrder = 7
 PriorityHeader.Size = UDim2.fromScale(0.9949, 0.0374)
 PriorityHeader.BackgroundTransparency = 1
 PriorityHeader.Text = "ENEMY PRIORITY"
@@ -563,7 +625,7 @@ PriorityHeader.Parent = Content
 
 local PriorityHint = Instance.new("TextLabel")
 PriorityHint.Name = "PriorityHint"
-PriorityHint.LayoutOrder = 7
+PriorityHint.LayoutOrder = 8
 PriorityHint.Size = UDim2.fromScale(0.9949, 0.0318)
 PriorityHint.BackgroundTransparency = 1
 PriorityHint.Text = "▲ / ▼   Change targeting order"
@@ -596,7 +658,7 @@ end
 local function CreatePriorityRow(Index)
 	local Row = Instance.new("Frame")
 	Row.Name = "Priority" .. Index
-	Row.LayoutOrder = 7 + Index
+	Row.LayoutOrder = 8 + Index
 	Row.Size = UDim2.fromScale(0.9949, 0.0822)
 	Row.BackgroundColor3 = UI_SURFACE
 	Row.BorderSizePixel = 0
@@ -711,8 +773,8 @@ local function CreatePriorityRow(Index)
 			CreatePriorityRow(NewIndex)
 		end
 
-		AddEnemyButton.LayoutOrder = 8 + #TARGET_ENTITY_PRIORITY
-		EnemyPicker.LayoutOrder = 9 + #TARGET_ENTITY_PRIORITY
+		AddEnemyButton.LayoutOrder = 9 + #TARGET_ENTITY_PRIORITY
+		EnemyPicker.LayoutOrder = 10 + #TARGET_ENTITY_PRIORITY
 
 		updatePriorityUI()
 
@@ -784,7 +846,7 @@ updatePriorityUI()
 --// Add Enemy
 AddEnemyButton = Instance.new("TextButton")
 AddEnemyButton.Name = "AddEnemy"
-AddEnemyButton.LayoutOrder = 8 + #TARGET_ENTITY_PRIORITY
+AddEnemyButton.LayoutOrder = 9 + #TARGET_ENTITY_PRIORITY
 AddEnemyButton.Size = UDim2.fromScale(0.9949, 0.0785)
 AddEnemyButton.BackgroundColor3 = UI_SURFACE
 AddEnemyButton.BorderSizePixel = 0
@@ -808,7 +870,7 @@ AddEnemyStroke.Parent = AddEnemyButton
 --// Enemy Picker
 EnemyPicker = Instance.new("Frame")
 EnemyPicker.Name = "EnemyPicker"
-EnemyPicker.LayoutOrder = 9 + #TARGET_ENTITY_PRIORITY
+EnemyPicker.LayoutOrder = 10 + #TARGET_ENTITY_PRIORITY
 EnemyPicker.Size = UDim2.fromScale(0.9949, 0)
 EnemyPicker.BackgroundColor3 = UI_SURFACE
 EnemyPicker.BorderSizePixel = 0
@@ -1024,8 +1086,8 @@ local function CreateEnemyPickerRow(EntityName, Index)
 			CreatePriorityRow(NewIndex)
 		end
 
-		AddEnemyButton.LayoutOrder = 8 + #TARGET_ENTITY_PRIORITY
-		EnemyPicker.LayoutOrder = 9 + #TARGET_ENTITY_PRIORITY
+		AddEnemyButton.LayoutOrder = 9 + #TARGET_ENTITY_PRIORITY
+		EnemyPicker.LayoutOrder = 10 + #TARGET_ENTITY_PRIORITY
 
 		updatePriorityUI()
 		RefreshEnemyPicker()
@@ -1187,13 +1249,6 @@ local function WatchMob(Mob)
 		end
 	end))
 
-	--// New Mob gets checked immediately
-	task.defer(function()
-		if Mob.Parent then
-			--// UpdateValidMobs() will validate it
-		end
-	end)
-
 	QueueEnemyPickerRefresh()
 end
 
@@ -1215,13 +1270,6 @@ local function WatchMobFolder(MobFolder)
 	table.insert(MobFolderConnections, MobFolder.ChildAdded:Connect(function(Mob)
 		WatchMob(Mob)
 		QueueEnemyPickerRefresh()
-
-		--// New mob is validated immediately
-		task.defer(function()
-			if Mob.Parent then
-				--// UpdateValidMobs() will catch it
-			end
-		end)
 	end))
 
 	table.insert(MobFolderConnections, MobFolder.ChildRemoved:Connect(function(Mob)
@@ -1366,6 +1414,26 @@ end)
 
 updateBlockButton()
 
+--// Safe Combat Position Button
+local function updateSafeCombatButton()
+	if SafeCombatPositionEnabled then
+		SafeCombatToggle.Text = "●  SAFE COMBAT POSITION  •  ENABLED"
+		SafeCombatToggle.BackgroundColor3 = Color3.fromRGB(60, 125, 50)
+	else
+		SafeCombatToggle.Text = "●  SAFE COMBAT POSITION  •  DISABLED"
+		SafeCombatToggle.BackgroundColor3 = Color3.fromRGB(255, 65, 65)
+	end
+end
+
+SafeCombatToggle.Activated:Connect(function()
+	SafeCombatPositionEnabled = not SafeCombatPositionEnabled
+
+	ResetTargetReposition()
+	updateSafeCombatButton()
+end)
+
+updateSafeCombatButton()
+
 --// Farm Button
 local function updateButton()
 	if Enabled then
@@ -1438,12 +1506,7 @@ local function updateServerAge()
 	local Minutes = math.floor((ServerAge % 3600) / 60)
 	local Seconds = ServerAge % 60
 
-	ServerAgeLabel.Text = string.format(
-		"%02d:%02d:%02d",
-		Hours,
-		Minutes,
-		Seconds
-	)
+	ServerAgeLabel.Text = string.format("%02d:%02d:%02d", Hours, Minutes, Seconds)
 end
 
 local function updatePosition()
@@ -1538,7 +1601,7 @@ local function IsInsideFarmArea(Position)
 		return false
 	end
 
-	local DeadzoneOffset   = Position - FARM_DEADZONE_CENTER
+	local DeadzoneOffset = Position - FARM_DEADZONE_CENTER
 	local DeadzoneDistance = Vector3.new(DeadzoneOffset.X, 0, DeadzoneOffset.Z).Magnitude
 
 	if DeadzoneDistance <= FARM_DEADZONE_RADIUS then
@@ -1571,11 +1634,7 @@ local function IsWaterAtPosition(Position, IgnoreModel)
 	local Origin    = Position + Vector3.new(0, 10, 0)
 	local Direction = Vector3.new(0, -30, 0)
 
-	local Result = workspace:Raycast(
-		Origin,
-		Direction,
-		RaycastParams
-	)
+	local Result = workspace:Raycast(Origin, Direction, RaycastParams)
 
 	return Result and Result.Material == Enum.Material.Water
 end
@@ -1619,7 +1678,7 @@ local function IsPathThroughDeadzone(TargetPosition)
 	local Distance = Offset.Magnitude
 
 	if Distance <= 0 then
-		local DeadzoneOffset   = Origin - FARM_DEADZONE_CENTER
+		local DeadzoneOffset = Origin - FARM_DEADZONE_CENTER
 		local DeadzoneDistance = Vector3.new(DeadzoneOffset.X, 0, DeadzoneOffset.Z).Magnitude
 
 		return DeadzoneDistance <= FARM_DEADZONE_RADIUS
@@ -1671,8 +1730,6 @@ local function CanSeeGoblin(Goblin)
 end
 
 --// Target Lock Validation
---// Only checks conditions that should actually cause the current target to be abandoned.
---// LOS / path / deadzone are intentionally NOT checked here.
 local function IsTargetLockValid(Mob)
 	if not Mob or not Mob:IsA("Model") then
 		return false
@@ -1721,6 +1778,7 @@ local function IsTargetLockValid(Mob)
 
 	local Offset   = MobRoot.Position - RootPart.Position
 	local Distance = Vector3.new(Offset.X, 0, Offset.Z).Magnitude
+
 	if DISTANCE_Y_CALCULATE then
 		Distance = Offset.Magnitude
 	end
@@ -1789,6 +1847,7 @@ local function IsValidMob(Mob)
 
 	local Offset   = MobRoot.Position - RootPart.Position
 	local Distance = Vector3.new(Offset.X, 0, Offset.Z).Magnitude
+
 	if DISTANCE_Y_CALCULATE then
 		Distance = Offset.Magnitude
 	end
@@ -1846,16 +1905,12 @@ local function UpdateValidMobs()
 		end
 	end
 
-	--// Remove mobs that no longer exist in the folder
 	for Mob in ValidMobs do
 		if not CurrentMobs[Mob] then
 			ValidMobs[Mob] = nil
 		end
 	end
 
-	--// Target Lock validation is separate from ValidMobs.
-	--// A target can temporarily leave ValidMobs because of LOS/path,
-	--// but that must NOT cause the target to switch.
 	if ClosestTarget and not IsTargetLockValid(ClosestTarget) then
 		ClosestTarget = nil
 	end
@@ -1877,8 +1932,8 @@ local function GetClosestGoblin()
 			continue
 		end
 
-		local Config = Mob:FindFirstChild("Config")
-		local Entity = Config and Config:FindFirstChild("Entity")
+		local Config  = Mob:FindFirstChild("Config")
+		local Entity  = Config and Config:FindFirstChild("Entity")
 		local MobRoot = Mob:FindFirstChild("HumanoidRootPart")
 
 		if not Entity or not MobRoot then
@@ -1895,6 +1950,7 @@ local function GetClosestGoblin()
 
 		local Offset   = MobRoot.Position - RootPart.Position
 		local Distance = Vector3.new(Offset.X, 0, Offset.Z).Magnitude
+
 		if DISTANCE_Y_CALCULATE then
 			Distance = Offset.Magnitude
 		end
@@ -1904,11 +1960,341 @@ local function GetClosestGoblin()
 		then
 			BestPriority = Priority
 			BestDistance = Distance
-			BestTarget = Mob
+			BestTarget   = Mob
 		end
 	end
 
 	return BestTarget
+end
+
+--// ============================================================
+--// COMBAT BLADE SYSTEM
+--// ============================================================
+
+local function GetHorizontalDistance(PositionA, PositionB)
+	local Offset = PositionA - PositionB
+
+	return Vector3.new(
+		Offset.X,
+		0,
+		Offset.Z
+	).Magnitude
+end
+
+--// Get every BladePart inside one Mob.
+local function GetBladeParts(Mob)
+	if not Mob then
+		return {}
+	end
+
+	local BladeParts = {}
+
+	for _, Descendant in Mob:GetDescendants() do
+		if not Descendant:IsA("BasePart") then
+			continue
+		end
+
+		if Descendant.Name ~= "BladePart" then
+			continue
+		end
+
+		table.insert(BladeParts, Descendant)
+	end
+
+	return BladeParts
+end
+
+--// Finds the closest point on an actual BladePart box.
+--// This is much more accurate than simply using BladePart.Position.
+local function GetClosestPointOnBlade(BladePart, Position)
+	if not BladePart or not BladePart:IsA("BasePart") then
+		return nil, math.huge
+	end
+
+	local LocalPosition = BladePart.CFrame:PointToObjectSpace(Position)
+	local HalfSize      = BladePart.Size * 0.5
+
+	local ClosestLocal = Vector3.new(
+		math.clamp(LocalPosition.X, -HalfSize.X, HalfSize.X),
+		math.clamp(LocalPosition.Y, -HalfSize.Y, HalfSize.Y),
+		math.clamp(LocalPosition.Z, -HalfSize.Z, HalfSize.Z)
+	)
+
+	local ClosestWorld = BladePart.CFrame:PointToWorldSpace(ClosestLocal)
+	local Distance     = (Position - ClosestWorld).Magnitude
+
+	return ClosestWorld, Distance
+end
+
+local function GetBladeDangerDistance()
+	return ENEMY_ATTACK_SAFE_DISTANCE + ENEMY_BLADE_PADDING
+end
+
+--// Return all mobs around the current combat group.
+local function GetNearbyCombatMobs(TargetMob)
+	if not TargetMob then
+		return {}
+	end
+
+	local TargetRoot = TargetMob:FindFirstChild("HumanoidRootPart")
+
+	if not TargetRoot then
+		return {}
+	end
+
+	local NearbyMobs = {
+		[TargetMob] = true,
+	}
+
+	local TargetPosition = TargetRoot.Position
+
+	for Mob in ValidMobs do
+		if Mob == TargetMob then
+			continue
+		end
+
+		if not Mob:IsDescendantOf(workspace) then
+			continue
+		end
+
+		local MobHumanoid = Mob:FindFirstChildOfClass("Humanoid")
+		local MobRoot     = Mob:FindFirstChild("HumanoidRootPart")
+
+		if not MobHumanoid
+			or not MobRoot
+			or MobHumanoid.Health <= 0
+		then
+			continue
+		end
+
+		local Distance = GetHorizontalDistance(TargetPosition, MobRoot.Position)
+
+		if Distance <= GROUP_DANGER_DISTANCE then
+			NearbyMobs[Mob] = true
+		end
+	end
+
+	--// Also inspect Mobs directly from workspace so a newly spawned
+	--// mob that has not entered ValidMobs yet can still be considered.
+	local MobFolder = workspace:FindFirstChild("Mobs")
+
+	if MobFolder then
+		for _, Mob in MobFolder:GetChildren() do
+			if NearbyMobs[Mob] then
+				continue
+			end
+
+			if not Mob:IsA("Model") then
+				continue
+			end
+
+			local MobHumanoid = Mob:FindFirstChildOfClass("Humanoid")
+			local MobRoot     = Mob:FindFirstChild("HumanoidRootPart")
+
+			if not MobHumanoid
+				or not MobRoot
+				or MobHumanoid.Health <= 0
+			then
+				continue
+			end
+
+			local Config = Mob:FindFirstChild("Config")
+			local Entity = Config and Config:FindFirstChild("Entity")
+
+			if not Entity
+				or not Entity:IsA("StringValue")
+				or not IsEntityInPriority(Entity.Value)
+			then
+				continue
+			end
+
+			local Distance = GetHorizontalDistance(TargetPosition, MobRoot.Position)
+
+			if Distance <= GROUP_DANGER_DISTANCE then
+				NearbyMobs[Mob] = true
+			end
+		end
+	end
+
+	local Result = {}
+
+	for Mob in NearbyMobs do
+		table.insert(Result, Mob)
+	end
+
+	return Result
+end
+
+--// Checks every BladePart in the combat group.
+local function GetBladeDangerData(TargetMob)
+	if not RootPart or not TargetMob then
+		return Vector3.zero, math.huge, nil
+	end
+
+	local CombatMobs = GetNearbyCombatMobs(TargetMob)
+
+	local PushDirection            = Vector3.zero
+	local ClosestEffectiveDistance = math.huge
+	local ClosestBlade             = nil
+
+	local DangerDistance = GetBladeDangerDistance()
+
+	for _, Mob in CombatMobs do
+		for _, BladePart in GetBladeParts(Mob) do
+			if not BladePart:IsDescendantOf(workspace) then
+				continue
+			end
+
+			local ClosestPoint, Distance = GetClosestPointOnBlade(BladePart, RootPart.Position)
+
+			if not ClosestPoint then
+				continue
+			end
+
+			local EffectiveDistance = Distance - DangerDistance
+
+			if EffectiveDistance < ClosestEffectiveDistance then
+				ClosestEffectiveDistance = EffectiveDistance
+				ClosestBlade = BladePart
+			end
+
+			if Distance <= DangerDistance then
+				local Offset = RootPart.Position - ClosestPoint
+				local HorizontalOffset = Vector3.new(Offset.X, 0, Offset.Z)
+
+				if HorizontalOffset.Magnitude > 0.01 then
+					local Strength = math.max(DangerDistance - Distance, 0.1)
+
+					PushDirection += HorizontalOffset.Unit * Strength
+				end
+			end
+		end
+	end
+
+	if PushDirection.Magnitude > 0.01 then
+		PushDirection = PushDirection.Unit
+	end
+
+	return PushDirection, ClosestEffectiveDistance, ClosestBlade
+end
+
+--// Check whether a position is safe from every BladePart
+--// in the nearby enemy group.
+local function IsPositionSafeFromBladeGroup(Position, TargetMob)
+	if not Position or not TargetMob then
+		return true
+	end
+
+	local DangerDistance = GetBladeDangerDistance()
+
+	for _, Mob in GetNearbyCombatMobs(TargetMob) do
+		for _, BladePart in GetBladeParts(Mob) do
+			if not BladePart:IsDescendantOf(workspace) then
+				continue
+			end
+
+			local _, Distance = GetClosestPointOnBlade(BladePart, Position)
+
+			if Distance <= DangerDistance then
+				return false
+			end
+		end
+	end
+
+	return true
+end
+
+--// Checks whether a movement line crosses a BladePart danger zone.
+local function IsPathThroughBladeGroupDanger(TargetPosition, TargetMob)
+	if not RootPart or not TargetPosition or not TargetMob then
+		return false
+	end
+
+	local Origin = RootPart.Position
+	local Offset = TargetPosition - Origin
+	local Distance = Offset.Magnitude
+
+	if Distance <= 0.01 then
+		return not IsPositionSafeFromBladeGroup(TargetPosition, TargetMob)
+	end
+
+	local Direction = Offset.Unit
+	local SampleDistance = 2
+
+	for DistanceTravelled = 0, Distance, SampleDistance do
+		local Position = Origin + Direction * DistanceTravelled
+
+		if not IsPositionSafeFromBladeGroup(Position, TargetMob) then
+			return true
+		end
+	end
+
+	return not IsPositionSafeFromBladeGroup(TargetPosition, TargetMob)
+end
+
+--// Get a safe combat position around the Target.
+local function GetSafeCombatPosition(TargetMob)
+	if not RootPart or not TargetMob then
+		return nil
+	end
+
+	local TargetRoot = TargetMob:FindFirstChild("HumanoidRootPart")
+
+	if not TargetRoot then
+		return nil
+	end
+
+	local Offset = RootPart.Position - TargetRoot.Position
+	local Direction = Vector3.new(Offset.X, 0, Offset.Z)
+
+	if Direction.Magnitude <= 0.01 then
+		Direction = Vector3.zAxis
+	else
+		Direction = Direction.Unit
+	end
+
+	--// Start from the distance our own weapon wants.
+	local CombatDistance = PLAYER_ATTACK_DISTANCE
+
+	--// Make sure we don't enter the BladePart danger zone
+	--// of any mob in the group.
+	for _, Mob in GetNearbyCombatMobs(TargetMob) do
+		local MobRoot = Mob:FindFirstChild("HumanoidRootPart")
+
+		if not MobRoot then
+			continue
+		end
+
+		local BladeParts = GetBladeParts(Mob)
+
+		if #BladeParts == 0 then
+			continue
+		end
+
+		for _, BladePart in BladeParts do
+			local BladeOffset = BladePart.Position - TargetRoot.Position
+			local HorizontalBladeOffset = Vector3.new(BladeOffset.X, 0, BladeOffset.Z)
+			local BladeDistance = HorizontalBladeOffset.Magnitude
+			local RequiredDistance = BladeDistance + GetBladeDangerDistance()
+
+			CombatDistance = math.max(CombatDistance, RequiredDistance)
+		end
+	end
+
+	--// The desired position is based on TargetRoot,
+	--// then validated against every BladePart.
+	local CandidatePosition = TargetRoot.Position + Direction * CombatDistance
+
+	if IsInsideFarmArea(CandidatePosition)
+		and not IsWaterAtPosition(CandidatePosition, TargetMob)
+		and not IsPathThroughWater(CandidatePosition)
+		and not IsPathThroughDeadzone(CandidatePosition)
+		and IsPositionSafeFromBladeGroup(CandidatePosition, TargetMob)
+	then
+		return CandidatePosition
+	end
+
+	return nil
 end
 
 --// Retreat Obstacle Check
@@ -2010,7 +2396,7 @@ local function GetRetreatPosition()
 			and TargetRoot
 			and TargetHumanoid.Health > 0
 		then
-			local Offset   = RootPart.Position - TargetRoot.Position
+			local Offset = RootPart.Position - TargetRoot.Position
 			local Distance = Offset.Magnitude
 
 			if Distance > 0 then
@@ -2024,7 +2410,7 @@ local function GetRetreatPosition()
 			local MobRoot = Goblin:FindFirstChild("HumanoidRootPart")
 
 			if MobRoot then
-				local Offset   = RootPart.Position - MobRoot.Position
+				local Offset = RootPart.Position - MobRoot.Position
 				local Distance = Offset.Magnitude
 
 				if Distance > 0 then
@@ -2077,7 +2463,9 @@ end
 local function RetreatFromGoblins()
 	local RetreatPosition = nil
 
-	if LastRetreatPosition and os.clock() - LastRetreatCalculateTime < RETREAT_RECALCULATE_INTERVAL then
+	if LastRetreatPosition
+		and os.clock() - LastRetreatCalculateTime < RETREAT_RECALCULATE_INTERVAL
+	then
 		RetreatPosition = LastRetreatPosition
 	else
 		RetreatPosition = GetRetreatPosition()
@@ -2092,12 +2480,14 @@ local function RetreatFromGoblins()
 	end
 
 	if RetreatPosition then
+		Humanoid.AutoRotate = true
 		Humanoid:MoveTo(RetreatPosition)
 	else
 		Humanoid:Move(Vector3.zero)
 	end
 end
 
+--// Approach Position Check
 local function IsApproachPositionClear(TargetPosition, Goblin)
 	if not RootPart or not TargetPosition then
 		return false
@@ -2119,6 +2509,24 @@ local function IsApproachPositionClear(TargetPosition, Goblin)
 		return false
 	end
 
+	--// Never select a position inside any BladePart danger zone
+	--// around the target group.
+	if SafeCombatPositionEnabled
+		and Goblin
+		and not IsPositionSafeFromBladeGroup(TargetPosition, Goblin)
+	then
+		return false
+	end
+
+	--// Also make sure the route itself doesn't pass through
+	--// an enemy BladePart danger zone.
+	if SafeCombatPositionEnabled
+		and Goblin
+		and IsPathThroughBladeGroupDanger(TargetPosition, Goblin)
+	then
+		return false
+	end
+
 	local Origin    = RootPart.Position
 	local Direction = TargetPosition - Origin
 
@@ -2133,11 +2541,7 @@ local function IsApproachPositionClear(TargetPosition, Goblin)
 		Goblin,
 	}
 
-	local Result = workspace:Raycast(
-		Origin,
-		Direction,
-		RaycastParams
-	)
+	local Result = workspace:Raycast(Origin, Direction, RaycastParams)
 
 	return Result == nil
 end
@@ -2166,15 +2570,12 @@ local function CanSeeGoblinFromPosition(Position, Goblin)
 		Goblin,
 	}
 
-	local Result = workspace:Raycast(
-		Position,
-		Direction,
-		RaycastParams
-	)
+	local Result = workspace:Raycast(Position, Direction, RaycastParams)
 
 	return Result == nil
 end
 
+--// Target Reposition
 local function GetTargetRepositionPosition(Goblin)
 	if not RootPart or not Goblin then
 		return nil
@@ -2185,6 +2586,33 @@ local function GetTargetRepositionPosition(Goblin)
 	if not MobRoot then
 		return nil
 	end
+
+	--// Calculate the minimum safe radius around the target.
+	local SafeRadius = PLAYER_ATTACK_DISTANCE
+
+	if SafeCombatPositionEnabled then
+		for _, Mob in GetNearbyCombatMobs(Goblin) do
+			local NearbyRoot = Mob:FindFirstChild("HumanoidRootPart")
+
+			if not NearbyRoot then
+				continue
+			end
+
+			for _, BladePart in GetBladeParts(Mob) do
+				local Offset = BladePart.Position - MobRoot.Position
+				local HorizontalOffset = Vector3.new(Offset.X, 0, Offset.Z)
+				local BladeDistance = HorizontalOffset.Magnitude
+
+				SafeRadius = math.max(
+					SafeRadius,
+					BladeDistance + GetBladeDangerDistance()
+				)
+			end
+		end
+	end
+
+	--// Never make the radius absurdly small.
+	SafeRadius = math.max(SafeRadius, GOBLIN_REACH_DISTANCE)
 
 	local BestPosition = nil
 	local BestScore    = math.huge
@@ -2198,7 +2626,7 @@ local function GetTargetRepositionPosition(Goblin)
 			math.sin(Angle)
 		)
 
-		local CandidatePosition = MobRoot.Position + Direction * TARGET_REPOSITION_RADIUS
+		local CandidatePosition = MobRoot.Position + Direction * SafeRadius
 
 		if not IsApproachPositionClear(CandidatePosition, Goblin) then
 			continue
@@ -2208,15 +2636,19 @@ local function GetTargetRepositionPosition(Goblin)
 			continue
 		end
 
-		local Offset   = CandidatePosition - RootPart.Position
+		if SafeCombatPositionEnabled
+			and not IsPositionSafeFromBladeGroup(CandidatePosition, Goblin)
+		then
+			continue
+		end
+
+		local Offset = CandidatePosition - RootPart.Position
 		local Distance = Vector3.new(Offset.X, 0, Offset.Z).Magnitude
 
+		--// Prefer positions closer to the current player
+		--// while still maintaining safety.
 		local TargetOffset = CandidatePosition - MobRoot.Position
-		local TargetDistance = Vector3.new(
-			TargetOffset.X,
-			0,
-			TargetOffset.Z
-		).Magnitude
+		local TargetDistance = Vector3.new(TargetOffset.X, 0, TargetOffset.Z).Magnitude
 
 		local Score = Distance + TargetDistance * 0.15
 
@@ -2229,14 +2661,47 @@ local function GetTargetRepositionPosition(Goblin)
 	return BestPosition
 end
 
---// Move To Goblin
+local function FaceGoblin(Goblin)
+	if not RootPart or not Goblin then
+		return
+	end
+
+	local MobRoot = Goblin:FindFirstChild("HumanoidRootPart")
+
+	if not MobRoot then
+		return
+	end
+
+	local RootPosition = RootPart.Position
+	local TargetPosition = MobRoot.Position
+
+	local Direction = Vector3.new(
+		TargetPosition.X - RootPosition.X,
+		0,
+		TargetPosition.Z - RootPosition.Z
+	)
+
+	if Direction.Magnitude <= 0.01 then
+		return
+	end
+
+	FaceOrientation.CFrame = CFrame.lookAt(
+		RootPosition,
+		RootPosition + Direction
+	)
+
+	FaceOrientation.Enabled = true
+end
+
+--// ============================================================
+--// MOVE TO GOBLIN
+--// ============================================================
+
 local function MoveToGoblin(Goblin)
 	if not Goblin or not RootPart then
 		return
 	end
 
-	--// Only conditions that should abandon the locked target
-	--// are checked here.
 	if not IsTargetLockValid(Goblin) then
 		if ClosestTarget == Goblin then
 			ClosestTarget = nil
@@ -2249,7 +2714,10 @@ local function MoveToGoblin(Goblin)
 	local MobHumanoid = Goblin:FindFirstChildOfClass("Humanoid")
 	local MobRoot     = Goblin:FindFirstChild("HumanoidRootPart")
 
-	if not MobHumanoid or not MobRoot or MobHumanoid.Health <= 0 then
+	if not MobHumanoid
+		or not MobRoot
+		or MobHumanoid.Health <= 0
+	then
 		if ClosestTarget == Goblin then
 			ClosestTarget = nil
 		end
@@ -2260,83 +2728,124 @@ local function MoveToGoblin(Goblin)
 		return
 	end
 
-	--// If the target changed, reset all reposition state.
+	--// Safe Combat Position disabled:
+	--// simply move directly toward the target.
+	if not SafeCombatPositionEnabled then
+		ResetTargetReposition()
+		Humanoid.AutoRotate = false
+		Humanoid:MoveTo(MobRoot.Position)
+		FaceGoblin(Goblin)
+		return
+	end
+
 	if TargetApproachMob ~= Goblin then
 		ResetTargetReposition()
 		TargetApproachMob = Goblin
 	end
 
-	local TargetPosition = MobRoot.Position
+	--// ========================================================
+	--// FIRST PRIORITY:
+	--// Get away from ANY BladePart that is currently too close.
+	--// ========================================================
 
-	local Offset   = TargetPosition - RootPart.Position
-	local Distance = Vector3.new(Offset.X, 0, Offset.Z).Magnitude
+	local PushDirection, ClosestEffectiveDistance, ClosestBlade = GetBladeDangerData(Goblin)
 
-	if DISTANCE_Y_CALCULATE then
-		Distance = Offset.Magnitude
-	end
+	if ClosestEffectiveDistance <= 0 then
+		if PushDirection.Magnitude > 0 then
+			local RetreatDistance = math.abs(ClosestEffectiveDistance) + ENEMY_ATTACK_SAFE_DISTANCE + 2
+			local RetreatPosition = RootPart.Position + PushDirection * RetreatDistance
 
-	--// Already close enough to the target.
-	if Distance <= GOBLIN_REACH_DISTANCE then
-		Humanoid:Move(Vector3.zero)
-		ResetTargetReposition()
-		TargetApproachMob = Goblin
+			if IsInsideFarmArea(RetreatPosition)
+				and not IsWaterAtPosition(RetreatPosition, Goblin)
+				and not IsPathThroughWater(RetreatPosition)
+				and not IsPathThroughDeadzone(RetreatPosition)
+			then
+				Humanoid.AutoRotate = true
+				Humanoid:MoveTo(RetreatPosition)
+			else
+				Humanoid:Move(PushDirection)
+			end
+		else
+			Humanoid:Move(Vector3.zero)
+		end
+
 		return
 	end
 
-	--// Direct route is available.
-	local DirectPathBlocked =
-		not CanSeeGoblin(Goblin)
-		or IsPathThroughWater(TargetPosition)
-		or IsPathThroughDeadzone(TargetPosition)
+	--// ========================================================
+	--// SECOND PRIORITY:
+	--// Move to a safe attack position.
+	--// ========================================================
 
-	if not DirectPathBlocked then
-		TargetUnreachableSince = nil
-		TargetApproachPosition = nil
+	local SafeCombatPosition = GetSafeCombatPosition(Goblin)
 
-		Humanoid:MoveTo(TargetPosition)
-		return
+	if SafeCombatPosition then
+		local Offset = SafeCombatPosition - RootPart.Position
+		local Distance = Vector3.new(Offset.X, 0, Offset.Z).Magnitude
+
+		--// Already at the desired safe position.
+		if Distance <= 2 then
+			Humanoid:Move(Vector3.zero)
+
+			TargetUnreachableSince = nil
+			TargetApproachPosition = nil
+
+			return
+		end
+
+		local DirectPathBlocked =
+			not CanSeeGoblin(Goblin)
+			or IsPathThroughWater(SafeCombatPosition)
+			or IsPathThroughDeadzone(SafeCombatPosition)
+			or IsPathThroughBladeGroupDanger(SafeCombatPosition, Goblin)
+
+		if not DirectPathBlocked then
+			TargetUnreachableSince = nil
+			TargetApproachPosition = nil
+
+			Humanoid.AutoRotate = false
+			Humanoid:MoveTo(SafeCombatPosition)
+			FaceGoblin(Goblin)
+			return
+		end
 	end
 
-	--// Target is temporarily blocked.
-	--// Start the unreachable timer, but DO NOT immediately switch target.
+	--// ========================================================
+	--// THIRD PRIORITY:
+	--// Reposition around the entire enemy group.
+	--// ========================================================
+
 	if not TargetUnreachableSince then
 		TargetUnreachableSince = os.clock()
 	end
 
 	local now = os.clock()
 
-	--// Recalculate an approach position periodically.
 	if not TargetApproachPosition
 		or now - LastTargetRepositionTime >= TARGET_REPOSITION_INTERVAL
 	then
 		LastTargetRepositionTime = now
-
-		local NewApproachPosition = GetTargetRepositionPosition(Goblin)
-
-		TargetApproachPosition = NewApproachPosition
+		TargetApproachPosition = GetTargetRepositionPosition(Goblin)
 	end
 
-	--// We found a way around the blocking mob.
 	if TargetApproachPosition then
-		local ApproachOffset   = TargetApproachPosition - RootPart.Position
-		local ApproachDistance = Vector3.new(
-			ApproachOffset.X,
-			0,
-			ApproachOffset.Z
-		).Magnitude
+		local ApproachOffset = TargetApproachPosition - RootPart.Position
+		local ApproachDistance = Vector3.new(ApproachOffset.X, 0, ApproachOffset.Z).Magnitude
 
 		if ApproachDistance <= 3 then
 			TargetApproachPosition = nil
 		else
+			Humanoid.AutoRotate = false
 			Humanoid:MoveTo(TargetApproachPosition)
+			FaceGoblin(Goblin)
 			return
 		end
 	end
 
-	--// No valid approach position was found.
+	--// No safe position available.
+	Humanoid.AutoRotate = true
 	Humanoid:Move(Vector3.zero)
 
-	--// Target has been unreachable for too long.
 	if now - TargetUnreachableSince >= TARGET_UNREACHABLE_TIMEOUT then
 		if ClosestTarget == Goblin then
 			ClosestTarget = nil
@@ -2346,6 +2855,7 @@ local function MoveToGoblin(Goblin)
 	end
 end
 
+--// Combat Target Validation
 local function IsCombatTargetValid(Mob)
 	if not Mob or not Mob:IsA("Model") then
 		return false
@@ -2361,21 +2871,28 @@ local function IsCombatTargetValid(Mob)
 
 	local MobFolder = workspace:FindFirstChild("Mobs")
 
-	if not MobFolder or not Mob:IsDescendantOf(MobFolder) then
+	if not MobFolder
+		or not Mob:IsDescendantOf(MobFolder)
+	then
 		return false
 	end
 
-	local Config = Mob:FindFirstChild("Config")
+	local Config      = Mob:FindFirstChild("Config")
 	local MobHumanoid = Mob:FindFirstChildOfClass("Humanoid")
-	local MobRoot = Mob:FindFirstChild("HumanoidRootPart")
+	local MobRoot     = Mob:FindFirstChild("HumanoidRootPart")
 
-	if not Config or not MobHumanoid or not MobRoot then
+	if not Config
+		or not MobHumanoid
+		or not MobRoot
+	then
 		return false
 	end
 
 	local Entity = Config:FindFirstChild("Entity")
 
-	if not Entity or not Entity:IsA("StringValue") then
+	if not Entity
+		or not Entity:IsA("StringValue")
+	then
 		return false
 	end
 
@@ -2387,7 +2904,7 @@ local function IsCombatTargetValid(Mob)
 		return false
 	end
 
-	local Offset   = MobRoot.Position - RootPart.Position
+	local Offset = MobRoot.Position - RootPart.Position
 	local Distance = Vector3.new(Offset.X, 0, Offset.Z).Magnitude
 
 	if DISTANCE_Y_CALCULATE then
@@ -2445,9 +2962,9 @@ RunService.Heartbeat:Connect(function()
 	updateServerAge()
 	updateEventCurrency()
 
-	WayPointLabel.Text  = CURRENT_WAYPOINT_TARGET .. "/" .. #Targets
+	WayPointLabel.Text = CURRENT_WAYPOINT_TARGET .. "/" .. #Targets
 	WalkSpeedLabel.Text = Humanoid.WalkSpeed
-	DeathLabel.Text     = DEATH_COUNT
+	DeathLabel.Text = DEATH_COUNT
 
 	--// Realtime Mob Validation
 	if now - LAST_MOB_VALIDATION_TIME >= MOB_VALIDATION_INTERVAL then
@@ -2456,6 +2973,7 @@ RunService.Heartbeat:Connect(function()
 	end
 
 	if not Enabled then
+		Humanoid.AutoRotate = true
 		Humanoid:Move(Vector3.zero)
 		return
 	end
@@ -2475,14 +2993,20 @@ RunService.Heartbeat:Connect(function()
 
 	--// Emergency Retreat
 	local EmergencyHealth = Humanoid.Health <= Humanoid.MaxHealth * 0.4
-	local ShouldHeal      = Humanoid.Health <= Humanoid.MaxHealth * 0.65
-	if ( EmergencyHealth or Humanoid.WalkSpeed < 38 ) then
+	local ShouldHeal     = Humanoid.Health <= Humanoid.MaxHealth * 0.65
+
+	if EmergencyHealth
+		or Humanoid.WalkSpeed < 38
+	then
 		RETREATING = true
-	elseif RETREATING and Humanoid.Health >= Humanoid.MaxHealth * 0.7 then
+	elseif RETREATING
+		and Humanoid.Health >= Humanoid.MaxHealth * 0.7
+	then
 		RETREATING = false
 	end
 
 	if RETREATING then
+		Humanoid.AutoRotate = true
 		local UseConsumable = Replicated:FindFirstChild("UseConsumable", true)
 		local PlayerStats   = Player:FindFirstChild("PlayerStats")
 
@@ -2490,14 +3014,23 @@ RunService.Heartbeat:Connect(function()
 		RetreatFromGoblins()
 
 		if InputBindableFunction
-			and (Equipped or (MainWeld.Part1 and MainWeld.Part1.Name ~= "UpperTorso"))
+			and ( Equipped or ( MainWeld.Part1 and MainWeld.Part1.Name ~= "UpperTorso" ) )
 		then
 			Equipped = false
-			InputBindableFunction:Invoke("EquipButton", Enum.UserInputState.Begin)
+
+			InputBindableFunction:Invoke(
+				"EquipButton",
+				Enum.UserInputState.Begin
+			)
+
 			return
 		end
 
-		if UseConsumable and PlayerStats and not Equipped and (EmergencyHealth or ShouldHeal) then
+		if UseConsumable
+			and PlayerStats
+			and not Equipped
+			and (EmergencyHealth or ShouldHeal)
+		then
 			local LastConsumed = PlayerStats:FindFirstChild("LastConsumed")
 
 			if LastConsumed
@@ -2565,19 +3098,16 @@ RunService.Heartbeat:Connect(function()
 			target = Targets[CURRENT_WAYPOINT_TARGET]
 		end
 
+		Humanoid.AutoRotate = true
 		Humanoid:MoveTo(target)
 	else
-		--// Waypoint Reached
-		--// Only choose a new target when there is NO locked target.
 		if not ClosestTarget then
 			ClosestTarget = GetClosestGoblin()
 		end
 
-		--// IMPORTANT:
-		--// Do NOT use ValidMobs[ClosestTarget] here.
-		--// ValidMobs can become false because of LOS/path/deadzone,
-		--// but the target must remain locked.
-		if ClosestTarget and not IsTargetLockValid(ClosestTarget) then
+		if ClosestTarget
+			and not IsTargetLockValid(ClosestTarget)
+		then
 			ClosestTarget = nil
 		end
 
@@ -2606,53 +3136,68 @@ RunService.Heartbeat:Connect(function()
 	--// Combat
 	if CURRENT_WAYPOINT_TARGET == #Targets then
 		if ClosestTarget then
-			--// Do not clear the target just because it is temporarily
-			--// missing from ValidMobs. Only the target-lock conditions
-			--// are allowed to release it.
 			if not IsTargetLockValid(ClosestTarget) then
 				ClosestTarget = nil
 				return
 			end
 
-			--// Combat still requires the target to be fully valid.
-			--// If LOS/path/deadzone fails, simply wait for the same target.
 			if not IsCombatTargetValid(ClosestTarget) then
 				Humanoid:Move(Vector3.zero)
 				return
 			end
 
 			if not Equipped
-				or (MainWeld.Part1 and MainWeld.Part1.Name == "UpperTorso")
+				or (
+					MainWeld.Part1
+						and MainWeld.Part1.Name == "UpperTorso"
+				)
 			then
 				Equipped = true
-				InputBindableFunction:Invoke("EquipButton", Enum.UserInputState.Begin)
+
+				InputBindableFunction:Invoke(
+					"EquipButton",
+					Enum.UserInputState.Begin
+				)
+
 				return
 			end
 
-			local MobHumanoid  = ClosestTarget:FindFirstChildOfClass("Humanoid")
-			local MobRoot      = ClosestTarget:FindFirstChild("HumanoidRootPart")
+			local MobHumanoid = ClosestTarget:FindFirstChildOfClass("Humanoid")
+			local MobRoot     = ClosestTarget:FindFirstChild("HumanoidRootPart")
 			local PlayerOffset = ClosestTarget:FindFirstChild("PlayerOffset", true)
 
-			if MobHumanoid and MobRoot and MobHumanoid.Health > 0 then
-				local Offset   = MobRoot.Position - RootPart.Position
+			if MobHumanoid
+				and MobRoot
+				and MobHumanoid.Health > 0
+			then
+				local Offset = MobRoot.Position - RootPart.Position
 				local Distance = Vector3.new(Offset.X, 0, Offset.Z).Magnitude
+
 				if DISTANCE_Y_CALCULATE then
 					Distance = Offset.Magnitude
 				end
 
+				--// =================================================
 				--// ATTACK
-				if now - LAST_ATTACK_TIME >= ATTACK_INTERVAL then
-					LAST_ATTACK_TIME = now
+				--//
+				--// Only attack when our player is actually close
+				--// enough to attack. This prevents the script from
+				--// blindly attacking while standing far away.
+				--// =================================================
 
-					InputBindableFunction:Invoke(
-						"AttackButton",
-						Enum.UserInputState.Begin
-					)
+				if Distance <= 30 then
+					if now - LAST_ATTACK_TIME >= ATTACK_INTERVAL then
+						LAST_ATTACK_TIME = now
+
+						InputBindableFunction:Invoke(
+							"AttackButton",
+							Enum.UserInputState.Begin
+						)
+					end
 				end
 
-				if Distance <= (25) then
-
-					--// SKILL
+				--// SKILL
+				if Distance <= 25 then
 					if now - LAST_SKILL_TIME >= SKILL_INTERVAL then
 						LAST_SKILL_TIME = now
 
