@@ -26,7 +26,7 @@ local CONFIG = {
 		Vector3.new(-1654, 174, 2619),
 		Vector3.new(-1792, 175, 2769),
 	},
-	VERSION = "v1.35",
+	VERSION = "v1.36",
 
 	FARM_CENTER = Vector3.new(-1715, 173, 2798),
 	FARM_RADIUS = 200,
@@ -49,7 +49,7 @@ local CONFIG = {
 	GROUP_DANGER_DISTANCE = 22,
 	THREAT_DETECTION_DISTANCE = 12,
 	THREAT_ANGLE = 65,
-	THREAT_ESCAPE_DISTANCE = 7,
+	THREAT_ESCAPE_DISTANCE = 15,
 
 	DEADZONE_ESCAPE_DISTANCE = 45,
 	DEADZONE_ESCAPE_DIRECTIONS = 16,
@@ -3654,7 +3654,7 @@ RunService.Heartbeat:Connect(function()
 		if ClosestTarget then
 			MoveToGoblin(ClosestTarget)
 		else
-			FaceOrientation.Enabled = false
+			--FaceOrientation.Enabled = false
 			Humanoid.AutoRotate = true
 			Humanoid:Move(Vector3.zero)
 		end
@@ -3684,7 +3684,7 @@ RunService.Heartbeat:Connect(function()
 			end
 
 			if not IsCombatTargetValid(ClosestTarget) then
-				FaceOrientation.Enabled = false
+				--FaceOrientation.Enabled = false
 				Humanoid.AutoRotate = true
 				Humanoid:Move(Vector3.zero)
 				return
