@@ -26,7 +26,7 @@ local CONFIG = {
 		Vector3.new(-1654, 174, 2619),
 		Vector3.new(-1792, 175, 2769),
 	},
-	VERSION = "v1.28",
+	VERSION = "v1.29",
 
 	FARM_CENTER = Vector3.new(-1715, 173, 2798),
 	FARM_RADIUS = 200,
@@ -2788,9 +2788,11 @@ function RetreatFromGoblins()
 	end
 
 	if RetreatPosition then
+		FaceOrientation.Enabled = false
 		Humanoid.AutoRotate = true
 		Humanoid:MoveTo(RetreatPosition)
 	else
+		FaceOrientation.Enabled = false
 		Humanoid.AutoRotate = true
 		Humanoid:Move(Vector3.zero)
 	end
@@ -3059,6 +3061,7 @@ function MoveToGoblin(Goblin)
 	--// simply move directly toward the target.
 	if not SafeCombatPositionEnabled then
 		ResetTargetReposition()
+		FaceOrientation.Enabled = true
 		Humanoid.AutoRotate = false
 		Humanoid:MoveTo(MobRoot.Position)
 		FaceGoblin(Goblin)
@@ -3087,6 +3090,7 @@ function MoveToGoblin(Goblin)
 				and not IsPathThroughWater(RetreatPosition)
 				and not IsPathThroughDeadzone(RetreatPosition)
 			then
+				FaceOrientation.Enabled = false
 				Humanoid.AutoRotate = true
 				Humanoid:MoveTo(RetreatPosition)
 				--FaceGoblin(Goblin)
@@ -3094,6 +3098,7 @@ function MoveToGoblin(Goblin)
 				Humanoid:Move(PushDirection)
 			end
 		else
+			FaceOrientation.Enabled = false
 			Humanoid.AutoRotate = true
 			Humanoid:Move(Vector3.zero)
 		end
@@ -3119,6 +3124,7 @@ function MoveToGoblin(Goblin)
 
 		--// Already at the desired safe position.
 		if Distance <= 2 then
+			FaceOrientation.Enabled = false
 			Humanoid.AutoRotate = true
 			Humanoid:Move(Vector3.zero)
 
@@ -3134,6 +3140,7 @@ function MoveToGoblin(Goblin)
 			TargetUnreachableSince = nil
 			TargetApproachPosition = nil
 
+			FaceOrientation.Enabled = true
 			Humanoid.AutoRotate = false
 			Humanoid:MoveTo(SafeCombatPosition)
 			FaceGoblin(Goblin)
@@ -3166,6 +3173,7 @@ function MoveToGoblin(Goblin)
 		if ApproachDistance <= 3 then
 			TargetApproachPosition = nil
 		else
+			FaceOrientation.Enabled = true
 			Humanoid.AutoRotate = false
 			Humanoid:MoveTo(TargetApproachPosition)
 			FaceGoblin(Goblin)
@@ -3174,6 +3182,7 @@ function MoveToGoblin(Goblin)
 	end
 
 	--// No safe position available.
+	FaceOrientation.Enabled = false
 	Humanoid.AutoRotate = true
 	Humanoid:Move(Vector3.zero)
 
@@ -3286,7 +3295,7 @@ end
 --// Position Update
 RunService.RenderStepped:Connect(function()
 	updatePosition()
-	
+
 	local PlayerStats = Player:FindFirstChild("PlayerStats")
 	if Humanoid then
 		if PlayerStats and PlayerStats.Level.Value >= 400 then
@@ -3339,6 +3348,7 @@ RunService.Heartbeat:Connect(function()
 	end
 
 	if not Enabled then
+		FaceOrientation.Enabled = false
 		Humanoid.AutoRotate = true
 		Humanoid:Move(Vector3.zero)
 		return
@@ -3372,7 +3382,6 @@ RunService.Heartbeat:Connect(function()
 	end
 
 	if RETREATING then
-		Humanoid.AutoRotate = true
 		local UseConsumable = Replicated:FindFirstChild("UseConsumable", true)
 		local PlayerStats   = Player:FindFirstChild("PlayerStats")
 
@@ -3462,6 +3471,7 @@ RunService.Heartbeat:Connect(function()
 			target = CONFIG.Targets[CONFIG.CURRENT_WAYPOINT_TARGET]
 		end
 
+		FaceOrientation.Enabled = false
 		Humanoid.AutoRotate = true
 		Humanoid:MoveTo(target)
 	else
@@ -3478,6 +3488,7 @@ RunService.Heartbeat:Connect(function()
 		if ClosestTarget then
 			MoveToGoblin(ClosestTarget)
 		else
+			FaceOrientation.Enabled = false
 			Humanoid.AutoRotate = true
 			Humanoid:Move(Vector3.zero)
 		end
@@ -3507,6 +3518,7 @@ RunService.Heartbeat:Connect(function()
 			end
 
 			if not IsCombatTargetValid(ClosestTarget) then
+				FaceOrientation.Enabled = false
 				Humanoid.AutoRotate = true
 				Humanoid:Move(Vector3.zero)
 				return
