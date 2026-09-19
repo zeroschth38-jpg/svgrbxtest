@@ -26,7 +26,7 @@ local CONFIG = {
 		Vector3.new(-1654, 174, 2619),
 		Vector3.new(-1792, 175, 2769),
 	},
-	VERSION = "v1.32",
+	VERSION = "v1.33",
 
 	FARM_CENTER = Vector3.new(-1715, 173, 2798),
 	FARM_RADIUS = 200,
@@ -130,6 +130,11 @@ local Feature = {
 	},
 	AutoSkill = {
 		Enabled = true,
+		Button = nil,
+		Status = nil,
+	},
+	ResetOnBoostOut = {
+		Enabled = false,
 		Button = nil,
 		Status = nil,
 	},
@@ -316,6 +321,27 @@ Player.CharacterAdded:Connect(function()
 	ResetTargetReposition()
 	CreateToggleContainer()
 end)
+
+local function AutoRefillBooster()
+	local PlayerStats = Player:FindFirstChild("PlayerStats")
+	if not PlayerStats then
+		repeat task.wait(1) until Player:FindFirstChild("PlayerStats")
+		PlayerStats = Player:FindFirstChild("PlayerStats")
+	end
+	local ExpBoost = PlayerStats:FindFirstChild("Boost")
+	local DropBoost = PlayerStats:FindFirstChild("BoostDrops")
+	ExpBoost:GetPropertyChangedSignal("Value"):Connect(function()
+		if ExpBoost.Value == 0 then
+			Humanoid.Health = 0
+		end
+	end)
+	DropBoost:GetPropertyChangedSignal("Value"):Connect(function()
+		if DropBoost.Value == 0 then
+			Humanoid.Health = 0
+		end
+	end)
+end
+AutoRefillBooster()
 
 --// UI
 local ScreenGui = Instance.new("ScreenGui")
@@ -560,6 +586,7 @@ Feature.SafeCombat.Button, Feature.SafeCombat.Status = CreateFeatureCard("SafeCo
 Feature.AutoSkill.Button, Feature.AutoSkill.Status = CreateFeatureCard("AutoSkill", 4)
 Feature.AutoFind.Button, Feature.AutoFind.Status = CreateFeatureCard("AutoFind", 5)
 Feature.IgnoreFarmZone.Button, Feature.IgnoreFarmZone.Status = CreateFeatureCard("IgnoreFarmZone", 6)
+Feature.ResetOnBoostOut.Button, Feature.ResetOnBoostOut.Status = CreateFeatureCard("ResetOnBoostOut", 8)
 
 FeaturesHeader.Activated:Connect(function()
 	SetFeaturesCollapsed(not FeaturesCollapsed)
@@ -1664,6 +1691,16 @@ function updateFeatureButtons()
 		Feature.AutoSkill.Button.BackgroundColor3 = Color3.fromRGB(255, 65, 65)
 		Feature.AutoSkill.Status.Text = "Automatic use skill is inactive"
 	end
+
+	if Feature.ResetOnBoostOut.Enabled then
+		Feature.ResetOnBoostOut.Button.Text = "●  AUTO REFILL BOOSTER  •  ENABLED"
+		Feature.ResetOnBoostOut.Button.BackgroundColor3 = Color3.fromRGB(60, 125, 50)
+		Feature.ResetOnBoostOut.Status.Text = "Automatic reset when booster ends is active"
+	else
+		Feature.ResetOnBoostOut.Button.Text = "●  AUTO REFILL BOOSTER  •  DISABLED"
+		Feature.ResetOnBoostOut.Button.BackgroundColor3 = Color3.fromRGB(255, 65, 65)
+		Feature.ResetOnBoostOut.Status.Text = "Automatic reset when booster ends is inactive"
+	end
 end
 
 Feature.AutoBlock.Button.Activated:Connect(function()
@@ -1709,6 +1746,11 @@ Feature.AutoSkill.Button.Activated:Connect(function()
 	updateFeatureButtons()
 end)
 
+Feature.ResetOnBoostOut.Button.Activated:Connect(function()
+	Feature.ResetOnBoostOut.Enabled = not Feature.ResetOnBoostOut.Enabled
+	BlockEnabled = Feature.ResetOnBoostOut.Enabled
+	updateFeatureButtons()
+end)
 
 --// Farm Button
 function updateButton()
