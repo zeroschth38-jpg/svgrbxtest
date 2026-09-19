@@ -74,7 +74,7 @@ local CONFIG = {
 	ATTACK_INTERVAL = 0.2,
 	SKILL_INTERVAL = 3,
 	CONSUME_INTERVAL = 10,
-	MINIMUM_WALKSPEED = 20,
+	MINIMUM_WALKSPEED = 28,
 	MAXIMUM_WALKSPEED = 38,
 	INTERACTION_INTERVAL = 0.5,
 	TEXT_UPDATE_INTERVAL = 0.5,
@@ -3545,11 +3545,11 @@ RunService.RenderStepped:Connect(function()
 
 	local PlayerStats = Player:FindFirstChild("PlayerStats")
 	if Humanoid then
-		if PlayerStats and PlayerStats.Level.Value >= 400 then
+		if PlayerStats and PlayerStats.Level.Value >= 300 then
 			if Humanoid.WalkSpeed < CONFIG.MAXIMUM_WALKSPEED then
 				Humanoid.WalkSpeed = CONFIG.MAXIMUM_WALKSPEED
 			end
-		else
+		elseif Humanoid.WalkSpeed < CONFIG.MINIMUM_WALKSPEED then
 			Humanoid.WalkSpeed = CONFIG.MINIMUM_WALKSPEED
 		end
 	end
@@ -3624,7 +3624,7 @@ RunService.Heartbeat:Connect(function()
 	local EmergencyHealth = Humanoid.Health <= Humanoid.MaxHealth * 0.4
 	local ShouldHeal      = Humanoid.Health <= Humanoid.MaxHealth * 0.65
 
-	if EmergencyHealth or (PlayerStats.Level.Value >= 400 and Humanoid.WalkSpeed < CONFIG.MAXIMUM_WALKSPEED) then
+	if EmergencyHealth or (PlayerStats.Level.Value >= 300 and Humanoid.WalkSpeed < CONFIG.MAXIMUM_WALKSPEED) then
 		RETREATING = true
 	elseif RETREATING and Humanoid.Health >= Humanoid.MaxHealth * 0.7 then
 		RETREATING = false
