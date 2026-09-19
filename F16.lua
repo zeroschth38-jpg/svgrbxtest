@@ -26,7 +26,7 @@ local CONFIG = {
 		Vector3.new(-1654, 174, 2619),
 		Vector3.new(-1792, 175, 2769),
 	},
-	VERSION = "v1.37",
+	VERSION = "v1.38",
 
 	FARM_CENTER = Vector3.new(-1715, 173, 2798),
 	FARM_RADIUS = 200,
@@ -3342,7 +3342,7 @@ function MoveToGoblin(Goblin)
 				FaceGoblin(Goblin)
 			else
 				Humanoid.AutoRotate = false
-				Humanoid:Move(PushDirection)
+				Humanoid:MoveTo(PushDirection)
 				FaceGoblin(Goblin)
 			end
 		else
