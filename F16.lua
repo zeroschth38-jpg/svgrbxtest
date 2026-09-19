@@ -26,7 +26,7 @@ local CONFIG = {
 		Vector3.new(-1654, 174, 2619),
 		Vector3.new(-1792, 175, 2769),
 	},
-	VERSION = "v1.3",
+	VERSION = "v1.32",
 
 	FARM_CENTER = Vector3.new(-1715, 173, 2798),
 	FARM_RADIUS = 200,
@@ -47,6 +47,9 @@ local CONFIG = {
 	ENEMY_ATTACK_SAFE_DISTANCE = 3,
 	ENEMY_BLADE_PADDING = 2,
 	GROUP_DANGER_DISTANCE = 22,
+	THREAT_DETECTION_DISTANCE = 12,
+	THREAT_ANGLE = 65,
+	THREAT_ESCAPE_DISTANCE = 7,
 
 	DEADZONE_ESCAPE_DISTANCE = 45,
 	DEADZONE_ESCAPE_DIRECTIONS = 16,
@@ -55,7 +58,7 @@ local CONFIG = {
 	JUMP_HEIGHT = 3,
 	BLOCK_COOLDOWN = 3,
 
-	MOB_DETECTION_DISTANCE = 200,
+	MOB_DETECTION_DISTANCE = 250,
 	MOB_VALIDATION_INTERVAL = 0.15,
 	DISTANCE_Y_CALCULATE = false,
 	TARGET_UNREACHABLE_TIMEOUT = 3,
@@ -122,6 +125,11 @@ local Feature = {
 	},
 	IgnoreFarmZone = {
 		Enabled = false,
+		Button = nil,
+		Status = nil,
+	},
+	AutoSkill = {
+		Enabled = true,
 		Button = nil,
 		Status = nil,
 	},
@@ -549,8 +557,9 @@ end
 Feature.AutoFarm.Button, Feature.AutoFarm.Status = CreateFeatureCard("AutoFarm", 1)
 Feature.AutoBlock.Button, Feature.AutoBlock.Status = CreateFeatureCard("AutoBlock", 2)
 Feature.SafeCombat.Button, Feature.SafeCombat.Status = CreateFeatureCard("SafeCombat", 3)
-Feature.AutoFind.Button, Feature.AutoFind.Status = CreateFeatureCard("AutoFind", 4)
-Feature.IgnoreFarmZone.Button, Feature.IgnoreFarmZone.Status = CreateFeatureCard("IgnoreFarmZone", 5)
+Feature.AutoSkill.Button, Feature.AutoSkill.Status = CreateFeatureCard("AutoSkill", 4)
+Feature.AutoFind.Button, Feature.AutoFind.Status = CreateFeatureCard("AutoFind", 5)
+Feature.IgnoreFarmZone.Button, Feature.IgnoreFarmZone.Status = CreateFeatureCard("IgnoreFarmZone", 6)
 
 FeaturesHeader.Activated:Connect(function()
 	SetFeaturesCollapsed(not FeaturesCollapsed)
@@ -1645,6 +1654,16 @@ function updateFeatureButtons()
 		Feature.IgnoreFarmZone.Button.BackgroundColor3 = Color3.fromRGB(255, 65, 65)
 		Feature.IgnoreFarmZone.Status.Text = "Farm zone checks are active"
 	end
+
+	if Feature.AutoSkill.Enabled then
+		Feature.AutoSkill.Button.Text = "●  AUTO SKILL  •  ENABLED"
+		Feature.AutoSkill.Button.BackgroundColor3 = Color3.fromRGB(60, 125, 50)
+		Feature.AutoSkill.Status.Text = "Automatic use skill is active"
+	else
+		Feature.AutoSkill.Button.Text = "●  AUTO SKILL  •  DISABLED"
+		Feature.AutoSkill.Button.BackgroundColor3 = Color3.fromRGB(255, 65, 65)
+		Feature.AutoSkill.Status.Text = "Automatic use skill is inactive"
+	end
 end
 
 Feature.AutoBlock.Button.Activated:Connect(function()
@@ -1683,6 +1702,13 @@ Feature.IgnoreFarmZone.Button.Activated:Connect(function()
 	ClosestTarget = GetClosestGoblin()
 	updateFeatureButtons()
 end)
+
+Feature.AutoSkill.Button.Activated:Connect(function()
+	Feature.AutoSkill.Enabled = not Feature.AutoSkill.Enabled
+	BlockEnabled = Feature.AutoSkill.Enabled
+	updateFeatureButtons()
+end)
+
 
 --// Farm Button
 function updateButton()
@@ -2154,6 +2180,89 @@ function GetClosestGoblin()
 	end
 
 	return BestTarget
+end
+
+--// Detect a secondary mob approaching from the side or behind.
+--// The primary target is never replaced by this system.
+function GetNearbyThreatMob(TargetMob)
+	if not RootPart or not TargetMob then
+		return nil
+	end
+
+	local BestThreat = nil
+	local BestDistance = math.huge
+	local LookVector = Vector3.new(RootPart.CFrame.LookVector.X, 0, RootPart.CFrame.LookVector.Z)
+
+	if LookVector.Magnitude <= 0.01 then
+		return nil
+	end
+
+	LookVector = LookVector.Unit
+
+	for Mob in ValidMobs do
+		if Mob == TargetMob then
+			continue
+		end
+
+		local MobHumanoid = Mob:FindFirstChildOfClass("Humanoid")
+		local MobRoot = Mob:FindFirstChild("HumanoidRootPart")
+
+		if not MobHumanoid or not MobRoot or MobHumanoid.Health <= 0 then
+			continue
+		end
+
+		local Offset = MobRoot.Position - RootPart.Position
+		local HorizontalOffset = Vector3.new(Offset.X, 0, Offset.Z)
+		local Distance = HorizontalOffset.Magnitude
+
+		if Distance <= 0.01 or Distance > CONFIG.THREAT_DETECTION_DISTANCE then
+			continue
+		end
+
+		local Direction = HorizontalOffset.Unit
+		local Dot = math.clamp(LookVector:Dot(Direction), -1, 1)
+		local Angle = math.deg(math.acos(Dot))
+
+		--// 0 = directly in front, 90 = side, 180 = behind.
+		if Angle >= CONFIG.THREAT_ANGLE and Distance < BestDistance then
+			BestThreat = Mob
+			BestDistance = Distance
+		end
+	end
+
+	return BestThreat, BestDistance
+end
+
+function GetThreatEscapePosition(TargetMob, ThreatMob)
+	if not RootPart or not ThreatMob then
+		return nil
+	end
+
+	local ThreatRoot = ThreatMob:FindFirstChild("HumanoidRootPart")
+	if not ThreatRoot then
+		return nil
+	end
+
+	local Away = RootPart.Position - ThreatRoot.Position
+	local Direction = Vector3.new(Away.X, 0, Away.Z)
+
+	if Direction.Magnitude <= 0.01 then
+		return nil
+	end
+
+	Direction = Direction.Unit
+
+	local Candidate = RootPart.Position + Direction * CONFIG.THREAT_ESCAPE_DISTANCE
+
+	if not IsInsideFarmArea(Candidate)
+		or IsWaterAtPosition(Candidate, TargetMob)
+		or IsPathThroughWater(Candidate)
+		or IsPathThroughDeadzone(Candidate)
+	then
+		return nil
+	end
+
+	return Candidate
 end
 
 --// ============================================================
@@ -3045,6 +3154,21 @@ function MoveToGoblin(Goblin)
 	local MobHumanoid = Goblin:FindFirstChildOfClass("Humanoid")
 	local MobRoot     = Goblin:FindFirstChild("HumanoidRootPart")
 
+	--// Secondary threat handling:
+	--// Keep the current target locked, but make room if another mob
+	--// closes in from the player's side or rear.
+	local ThreatMob, ThreatDistance = GetNearbyThreatMob(Goblin)
+	if ThreatMob and ThreatDistance <= CONFIG.ENEMY_ATTACK_SAFE_DISTANCE + CONFIG.THREAT_ESCAPE_DISTANCE then
+		local ThreatEscapePosition = GetThreatEscapePosition(Goblin, ThreatMob)
+
+		if ThreatEscapePosition then
+			Humanoid.AutoRotate = false
+			Humanoid:MoveTo(ThreatEscapePosition)
+			FaceGoblin(Goblin)
+			return
+		end
+	end
+
 	if not MobHumanoid
 		or not MobRoot
 		or MobHumanoid.Health <= 0
@@ -3063,7 +3187,6 @@ function MoveToGoblin(Goblin)
 	--// simply move directly toward the target.
 	if not SafeCombatPositionEnabled then
 		ResetTargetReposition()
-		FaceOrientation.Enabled = true
 		Humanoid.AutoRotate = false
 		Humanoid:MoveTo(MobRoot.Position)
 		FaceGoblin(Goblin)
@@ -3092,10 +3215,9 @@ function MoveToGoblin(Goblin)
 				and not IsPathThroughWater(RetreatPosition)
 				and not IsPathThroughDeadzone(RetreatPosition)
 			then
-				FaceOrientation.Enabled = false
-				Humanoid.AutoRotate = true
+				Humanoid.AutoRotate = false
 				Humanoid:MoveTo(RetreatPosition)
-				--FaceGoblin(Goblin)
+				FaceGoblin(Goblin)
 			else
 				Humanoid:Move(PushDirection)
 			end
@@ -3142,7 +3264,6 @@ function MoveToGoblin(Goblin)
 			TargetUnreachableSince = nil
 			TargetApproachPosition = nil
 
-			FaceOrientation.Enabled = true
 			Humanoid.AutoRotate = false
 			Humanoid:MoveTo(SafeCombatPosition)
 			FaceGoblin(Goblin)
@@ -3175,7 +3296,6 @@ function MoveToGoblin(Goblin)
 		if ApproachDistance <= 3 then
 			TargetApproachPosition = nil
 		else
-			FaceOrientation.Enabled = true
 			Humanoid.AutoRotate = false
 			Humanoid:MoveTo(TargetApproachPosition)
 			FaceGoblin(Goblin)
@@ -3313,6 +3433,7 @@ end)
 --// Movement + Block
 RunService.Heartbeat:Connect(function()
 	local now = os.clock()
+	local isTargetPlace = game.PlaceId == CONFIG.TargetPlaceID
 
 	--if game.PlaceId ~= CONFIG.TargetPlaceID then
 	--	Enabled = false
@@ -3422,7 +3543,7 @@ RunService.Heartbeat:Connect(function()
 	end
 
 	--// Player Check
-	if BlockEnabled and game.PlaceId == CONFIG.TargetPlaceID then
+	if BlockEnabled and isTargetPlace then
 		local HasOtherPlayer   = false
 		local HasBlockedPlayer = false
 
@@ -3468,7 +3589,7 @@ RunService.Heartbeat:Connect(function()
 	--// Movement
 	local target = CONFIG.Targets[CONFIG.CURRENT_WAYPOINT_TARGET]
 
-	if not Feature.AutoFind.Enabled and CONFIG.CURRENT_WAYPOINT_TARGET < #CONFIG.Targets and game.PlaceId == CONFIG.TargetPlaceID then
+	if not Feature.AutoFind.Enabled and CONFIG.CURRENT_WAYPOINT_TARGET < #CONFIG.Targets and isTargetPlace then
 		if (RootPart.Position - target).Magnitude <= CONFIG.REACH_DISTANCE then
 			CONFIG.CURRENT_WAYPOINT_TARGET += 1
 			target = CONFIG.Targets[CONFIG.CURRENT_WAYPOINT_TARGET]
@@ -3498,7 +3619,7 @@ RunService.Heartbeat:Connect(function()
 	end
 
 	--// Jump
-	if not Feature.AutoFind.Enabled and CONFIG.CURRENT_WAYPOINT_TARGET < #CONFIG.Targets then
+	if not Feature.AutoFind.Enabled and CONFIG.CURRENT_WAYPOINT_TARGET < #CONFIG.Targets and isTargetPlace then
 		local heightDifference = target.Y - RootPart.Position.Y
 
 		if heightDifference >= CONFIG.JUMP_HEIGHT then
@@ -3573,7 +3694,7 @@ RunService.Heartbeat:Connect(function()
 				end
 
 				--// SKILL
-				if Distance <= 15 then
+				if Distance <= 15 and Feature.AutoSkill.Enabled then
 					if now - LAST_SKILL_TIME >= CONFIG.SKILL_INTERVAL then
 						LAST_SKILL_TIME = now
 
