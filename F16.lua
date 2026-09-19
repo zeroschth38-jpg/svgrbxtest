@@ -3654,7 +3654,7 @@ RunService.Heartbeat:Connect(function()
 		if ClosestTarget then
 			MoveToGoblin(ClosestTarget)
 		else
-			--FaceOrientation.Enabled = false
+			FaceOrientation.Enabled = false
 			Humanoid.AutoRotate = true
 			Humanoid:Move(Vector3.zero)
 		end
@@ -3684,7 +3684,7 @@ RunService.Heartbeat:Connect(function()
 			end
 
 			if not IsCombatTargetValid(ClosestTarget) then
-				--FaceOrientation.Enabled = false
+				FaceOrientation.Enabled = false
 				Humanoid.AutoRotate = true
 				Humanoid:Move(Vector3.zero)
 				return
