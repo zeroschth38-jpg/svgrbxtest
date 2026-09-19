@@ -19,7 +19,7 @@ local Targets = {
 	Vector3.new(269, 59, -1438),
 }
 
-local VERSION = "v0.73"
+local VERSION = "v0.74"
 
 local REACH_DISTANCE = 5
 local JUMP_HEIGHT    = 3
@@ -83,6 +83,27 @@ Player.CharacterAdded:Connect(function()
 
 	updateCharacter()
 end)
+
+local function ResetOnBoostOut()
+	local PlayerStats = Player:FindFirstChild("PlayerStats")
+	if not PlayerStats then
+		repeat task.wait(1) until Player:FindFirstChild("PlayerStats")
+		PlayerStats = Player:FindFirstChild("PlayerStats")
+	end
+	local ExpBoost = PlayerStats:FindFirstChild("Boost")
+	local DropBoost = PlayerStats:FindFirstChild("BoostDrops")
+	ExpBoost:GetPropertyChangedSignal("Value"):Connect(function()
+		if ExpBoost.Value == 0 then
+			Humanoid.Health = 0
+		end
+	end)
+	DropBoost:GetPropertyChangedSignal("Value"):Connect(function()
+		if DropBoost.Value == 0 then
+			Humanoid.Health = 0
+		end
+	end)
+end
+ResetOnBoostOut()
 
 --// UI
 local ScreenGui = Instance.new("ScreenGui")
