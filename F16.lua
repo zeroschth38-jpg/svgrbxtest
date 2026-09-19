@@ -26,7 +26,7 @@ local CONFIG = {
 		Vector3.new(-1654, 174, 2619),
 		Vector3.new(-1792, 175, 2769),
 	},
-	VERSION = "v1.34",
+	VERSION = "v1.35",
 
 	FARM_CENTER = Vector3.new(-1715, 173, 2798),
 	FARM_RADIUS = 200,
@@ -1693,11 +1693,11 @@ function updateFeatureButtons()
 	end
 
 	if Feature.ResetOnBoostOut.Enabled then
-		Feature.ResetOnBoostOut.Button.Text = "●  AUTO REFILL BOOSTER  •  ENABLED"
+		Feature.ResetOnBoostOut.Button.Text = "●  REFILL BOOSTER  •  ENABLED"
 		Feature.ResetOnBoostOut.Button.BackgroundColor3 = Color3.fromRGB(60, 125, 50)
 		Feature.ResetOnBoostOut.Status.Text = "Automatic reset when booster ends is active"
 	else
-		Feature.ResetOnBoostOut.Button.Text = "●  AUTO REFILL BOOSTER  •  DISABLED"
+		Feature.ResetOnBoostOut.Button.Text = "●  REFILL BOOSTER  •  DISABLED"
 		Feature.ResetOnBoostOut.Button.BackgroundColor3 = Color3.fromRGB(255, 65, 65)
 		Feature.ResetOnBoostOut.Status.Text = "Automatic reset when booster ends is inactive"
 	end
