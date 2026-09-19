@@ -150,6 +150,38 @@ local function ResetTargetReposition()
 	LastTargetRepositionTime = 0
 end
 
+--// Toggle Screen GUI
+local ToggleScreenGUI    = PlayerGui:FindFirstChild("ToggleScreenGUI")
+local ToggleContainer    = ToggleScreenGUI:FindFirstChild("ToggleContainer")
+local ToggleUIListLayout = ToggleContainer:FindFirstChild("UIListLayout")
+
+local function CreateToggleContainer()
+	if not ToggleScreenGUI then
+		ToggleScreenGUI = Instance.new("ScreenGui")
+		ToggleScreenGUI.Name = "ToggleScreenGUI"
+		ToggleScreenGUI.IgnoreGuiInset = true
+		ToggleScreenGUI.Parent = PlayerGui
+	end
+	if not ToggleContainer then
+		ToggleContainer = Instance.new("Frame")
+		ToggleContainer.Name = "ToggleContainer"
+		ToggleContainer.Size = UDim2.new(1, -4, 0, 48)
+		ToggleContainer.Position = UDim2.fromOffset(0, 10)
+		ToggleContainer.BackgroundTransparency = 1
+		ToggleContainer.Parent = ToggleScreenGUI
+	end
+	if not ToggleUIListLayout then
+		ToggleUIListLayout = Instance.new("UIListLayout")
+		ToggleUIListLayout.Padding = UDim.new(0, 10)
+		ToggleUIListLayout.FillDirection = Enum.FillDirection.Horizontal
+		ToggleUIListLayout.SortOrder = Enum.SortOrder.LayoutOrder
+		ToggleUIListLayout.VerticalAlignment = Enum.VerticalAlignment.Center
+		ToggleUIListLayout.HorizontalAlignment = Enum.HorizontalAlignment.Right
+		ToggleUIListLayout.Parent = ToggleContainer
+	end
+end
+CreateToggleContainer()
+
 Player.CharacterAdded:Connect(function()
 	task.wait()
 
@@ -169,6 +201,7 @@ Player.CharacterAdded:Connect(function()
 
 	updateCharacter()
 	ResetTargetReposition()
+	CreateToggleContainer()
 end)
 
 --// UI
@@ -1235,39 +1268,6 @@ workspace.ChildRemoved:Connect(function(Child)
 
 	QueueEnemyPickerRefresh()
 end)
-
---// Toggle Screen GUI
-local ToggleScreenGUI = PlayerGui:FindFirstChild("ToggleScreenGUI")
-
-if not ToggleScreenGUI then
-	ToggleScreenGUI = Instance.new("ScreenGui")
-	ToggleScreenGUI.Name = "ToggleScreenGUI"
-	ToggleScreenGUI.IgnoreGuiInset = true
-	ToggleScreenGUI.Parent = PlayerGui
-end
-
-local ToggleContainer = ToggleScreenGUI:FindFirstChild("ToggleContainer")
-
-if not ToggleContainer then
-	ToggleContainer = Instance.new("Frame")
-	ToggleContainer.Name = "ToggleContainer"
-	ToggleContainer.Size = UDim2.new(1, -4, 0, 48)
-	ToggleContainer.Position = UDim2.fromOffset(0, 10)
-	ToggleContainer.BackgroundTransparency = 1
-	ToggleContainer.Parent = ToggleScreenGUI
-end
-
-local ToggleUIListLayout = ToggleContainer:FindFirstChild("UIListLayout")
-
-if not ToggleUIListLayout then
-	ToggleUIListLayout = Instance.new("UIListLayout")
-	ToggleUIListLayout.Padding = UDim.new(0, 10)
-	ToggleUIListLayout.FillDirection = Enum.FillDirection.Horizontal
-	ToggleUIListLayout.SortOrder = Enum.SortOrder.LayoutOrder
-	ToggleUIListLayout.VerticalAlignment = Enum.VerticalAlignment.Center
-	ToggleUIListLayout.HorizontalAlignment = Enum.HorizontalAlignment.Right
-	ToggleUIListLayout.Parent = ToggleContainer
-end
 
 --// GUI Toggle
 local GUIToggle = Instance.new("TextButton")
