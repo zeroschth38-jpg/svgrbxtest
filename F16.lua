@@ -26,7 +26,7 @@ local CONFIG = {
 		Vector3.new(-1654, 174, 2619),
 		Vector3.new(-1792, 175, 2769),
 	},
-	VERSION = "v1.27",
+	VERSION = "v1.28",
 
 	FARM_CENTER = Vector3.new(-1715, 173, 2798),
 	FARM_RADIUS = 200,
@@ -3286,9 +3286,16 @@ end
 --// Position Update
 RunService.RenderStepped:Connect(function()
 	updatePosition()
-
-	if Humanoid and Humanoid.WalkSpeed < 38 then
-		Humanoid.WalkSpeed = 38
+	
+	local PlayerStats = Player:FindFirstChild("PlayerStats")
+	if Humanoid then
+		if PlayerStats and PlayerStats.Level.Value >= 400 then
+			if Humanoid.WalkSpeed < 38 then
+				Humanoid.WalkSpeed = 38
+			end
+		else
+			Humanoid.WalkSpeed = 16
+		end
 	end
 end)
 
@@ -3296,11 +3303,11 @@ end)
 RunService.Heartbeat:Connect(function()
 	local now = os.clock()
 
-	if game.PlaceId ~= CONFIG.TargetPlaceID then
-		Enabled = false
-		updateButton()
-		return
-	end
+	--if game.PlaceId ~= CONFIG.TargetPlaceID then
+	--	Enabled = false
+	--	updateButton()
+	--	return
+	--end
 
 	if not Humanoid or not RootPart then
 		updateCharacter()
@@ -3403,7 +3410,7 @@ RunService.Heartbeat:Connect(function()
 	end
 
 	--// Player Check
-	if BlockEnabled then
+	if BlockEnabled and game.PlaceId == CONFIG.TargetPlaceID then
 		local HasOtherPlayer   = false
 		local HasBlockedPlayer = false
 
