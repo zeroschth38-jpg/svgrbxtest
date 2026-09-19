@@ -26,7 +26,7 @@ local CONFIG = {
 		Vector3.new(-1654, 174, 2619),
 		Vector3.new(-1792, 175, 2769),
 	},
-	VERSION = "v1.26",
+	VERSION = "v1.27",
 
 	FARM_CENTER = Vector3.new(-1715, 173, 2798),
 	FARM_RADIUS = 200,
@@ -2791,6 +2791,7 @@ function RetreatFromGoblins()
 		Humanoid.AutoRotate = true
 		Humanoid:MoveTo(RetreatPosition)
 	else
+		Humanoid.AutoRotate = true
 		Humanoid:Move(Vector3.zero)
 	end
 end
@@ -3093,6 +3094,7 @@ function MoveToGoblin(Goblin)
 				Humanoid:Move(PushDirection)
 			end
 		else
+			Humanoid.AutoRotate = true
 			Humanoid:Move(Vector3.zero)
 		end
 
@@ -3117,6 +3119,7 @@ function MoveToGoblin(Goblin)
 
 		--// Already at the desired safe position.
 		if Distance <= 2 then
+			Humanoid.AutoRotate = true
 			Humanoid:Move(Vector3.zero)
 
 			TargetUnreachableSince = nil
@@ -3468,6 +3471,7 @@ RunService.Heartbeat:Connect(function()
 		if ClosestTarget then
 			MoveToGoblin(ClosestTarget)
 		else
+			Humanoid.AutoRotate = true
 			Humanoid:Move(Vector3.zero)
 		end
 	end
@@ -3496,6 +3500,7 @@ RunService.Heartbeat:Connect(function()
 			end
 
 			if not IsCombatTargetValid(ClosestTarget) then
+				Humanoid.AutoRotate = true
 				Humanoid:Move(Vector3.zero)
 				return
 			end
