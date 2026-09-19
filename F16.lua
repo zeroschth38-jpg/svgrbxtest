@@ -26,7 +26,7 @@ local CONFIG = {
 		Vector3.new(-1654, 174, 2619),
 		Vector3.new(-1792, 175, 2769),
 	},
-	VERSION = "v1.33",
+	VERSION = "v1.34",
 
 	FARM_CENTER = Vector3.new(-1715, 173, 2798),
 	FARM_RADIUS = 200,
@@ -2941,11 +2941,11 @@ function RetreatFromGoblins()
 	end
 
 	if RetreatPosition then
-		FaceOrientation.Enabled = false
+		--FaceOrientation.Enabled = false
 		Humanoid.AutoRotate = true
 		Humanoid:MoveTo(RetreatPosition)
 	else
-		FaceOrientation.Enabled = false
+		--FaceOrientation.Enabled = false
 		Humanoid.AutoRotate = true
 		Humanoid:Move(Vector3.zero)
 	end
@@ -3264,7 +3264,7 @@ function MoveToGoblin(Goblin)
 				Humanoid:Move(PushDirection)
 			end
 		else
-			FaceOrientation.Enabled = false
+			--FaceOrientation.Enabled = false
 			Humanoid.AutoRotate = true
 			Humanoid:Move(Vector3.zero)
 		end
@@ -3290,7 +3290,7 @@ function MoveToGoblin(Goblin)
 
 		--// Already at the desired safe position.
 		if Distance <= 2 then
-			FaceOrientation.Enabled = false
+			--FaceOrientation.Enabled = false
 			Humanoid.AutoRotate = true
 			Humanoid:Move(Vector3.zero)
 
@@ -3346,7 +3346,7 @@ function MoveToGoblin(Goblin)
 	end
 
 	--// No safe position available.
-	FaceOrientation.Enabled = false
+	--FaceOrientation.Enabled = false
 	Humanoid.AutoRotate = true
 	Humanoid:Move(Vector3.zero)
 
@@ -3654,7 +3654,7 @@ RunService.Heartbeat:Connect(function()
 		if ClosestTarget then
 			MoveToGoblin(ClosestTarget)
 		else
-			FaceOrientation.Enabled = false
+			--FaceOrientation.Enabled = false
 			Humanoid.AutoRotate = true
 			Humanoid:Move(Vector3.zero)
 		end
@@ -3684,7 +3684,7 @@ RunService.Heartbeat:Connect(function()
 			end
 
 			if not IsCombatTargetValid(ClosestTarget) then
-				FaceOrientation.Enabled = false
+				--FaceOrientation.Enabled = false
 				Humanoid.AutoRotate = true
 				Humanoid:Move(Vector3.zero)
 				return
