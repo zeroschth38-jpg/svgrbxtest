@@ -6,7 +6,7 @@ local UserInputService     = game:GetService("UserInputService")
 local MarketplaceService   = game:GetService("MarketplaceService")
 
 local Player    = Players.LocalPlayer
-local PlayerGui = Player:WaitForChild("PlayerGui")
+local PlayerGui = Player:WaitForChild("PlayerGui", 10)
 
 local Targets = {
 	Vector3.new(-778, 176, 25),
@@ -19,7 +19,7 @@ local Targets = {
 	Vector3.new(269, 59, -1438),
 }
 
-local VERSION = "v0.74"
+local VERSION = "v0.75"
 
 local REACH_DISTANCE = 5
 local JUMP_HEIGHT    = 3
@@ -161,7 +161,7 @@ HeaderCorner.Parent = Header
 
 local HeaderMask = Instance.new("Frame")
 HeaderMask.Size = UDim2.fromScale(1, 0.25)
-HeaderMask.Position = UDim2.fromScale(0, 0, 1, -0.25)
+HeaderMask.Position = UDim2.fromScale(1, -0.25)
 HeaderMask.BackgroundColor3 = UI_SURFACE
 HeaderMask.BorderSizePixel = 0
 HeaderMask.Parent = Header
